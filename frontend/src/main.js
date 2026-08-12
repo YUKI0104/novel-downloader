@@ -437,6 +437,7 @@ function resetModal() {
     $('m-progress-wrap').classList.add('hidden');
     $('m-result').classList.add('hidden');
     $('m-sd-strip').classList.add('hidden');
+    $('m-sd-hint').classList.add('hidden');
     $('m-progress-bar').style.width = '0%';
     $('m-progress-text').textContent = '';
     $('m-cover').style.visibility = 'hidden';
@@ -742,6 +743,7 @@ $('btn-save-settings').addEventListener('click', async () => {
 // ---------------------------------------------------------------------------
 async function loadShortdramaStrip(title) {
     const strip = $('m-sd-strip');
+    const hint = $('m-sd-hint');
     try {
         const items = await ShortdramaSearch(title);
         const best = items[0];
@@ -751,7 +753,10 @@ async function loadShortdramaStrip(title) {
         $('sd-adapting').textContent = best.adaptingCnt || '0';
         strip.classList.remove('hidden');
     } catch (e) {
-        // 静默失败,不打扰主流程
+        // 无浏览器登录态时提醒用户(其他错误静默)
+        if (e && e.message && e.message.includes('登录态')) {
+            hint.classList.remove('hidden');
+        }
     }
 }
 

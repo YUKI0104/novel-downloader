@@ -63,18 +63,12 @@ var browserSpecs = []browserSpec{
 // 算法与 browser_cookie3 一致:keychain 密钥 → PBKDF2(saltysalt,1003)
 // → AES-128-CBC(iv=16空格) → 库版本>=24 时去掉前 32 字节完整性前缀。
 func shortdramaSessionID() (string, error) {
-	var errs []string
 	for _, b := range browserSpecs {
 		if sid, err := sessionFromBrowser(b); err == nil && sid != "" {
 			return sid, nil
-		} else if err != nil {
-			errs = append(errs, b.name+": "+err.Error())
 		}
 	}
-	if len(errs) == 0 {
-		errs = append(errs, "所有浏览器均未找到会话")
-	}
-	return "", errors.New(strings.Join(errs, "; "))
+	return "", errors.New("未检测到 shortdramas 登录态:请在 Chrome / Edge / Brave / Vivaldi / Opera 浏览器中登录 www.shortdramas.com 后重试")
 }
 
 func sessionFromBrowser(b browserSpec) (string, error) {

@@ -613,6 +613,17 @@ main { padding-top: 20px; }
 }
 .sd-item b { color: var(--text-secondary); font-weight: 500; }
 
+.m-sd-hint {
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--orange-bg);
+    color: var(--orange);
+    font-size: 12.5px;
+    line-height: 1.6;
+}
+.m-sd-hint b { font-weight: 600; }
+
 /* 进度条:在下载按钮右侧同一行,占剩余宽度 */
 .progress-wrap {
     flex: 1;
