@@ -18,7 +18,6 @@ macOS 免费小说下载 GUI,支持**七猫小说**和**番茄小说**两大平�
 - ⬇️ **一键下载**:TXT / EPUB,实时进度(章数百分比)
 - 📂 **已下载管理**:列表 + 删除(仅移除记录 / 同时删除文件)+ Finder 定位
 - ⚙️ **设置**:下载目录、保存格式(TXT/EPUB)
-- 🔍 **环境自检**:番茄内核是否存在 / 服务状态 / 目录可写
 - 📐 固定窗口(1100×780,不可拉伸),明暗双模式跟随系统
 
 ## 🏗 项目结构
@@ -78,3 +77,10 @@ go test -run TestE2E -v   # 无 GUI 的逻辑链路测试(会真连七猫/番茄
 - **番茄 API**:通过 Rust 服务 `127.0.0.1:18423` 的 REST 接口;榜单抓官网 `/rank` 页(分类导航),
   因官网书名被自定义字体混淆(PUA 私用区字符),榜单需经内核解码书名,已做并发 + 缓存优化。
 - **关键坑**:`http.Client{Timeout: 60}` 是 **60 纳秒**而非 60 秒,必须写 `60 * time.Second`。
+
+## 🙏 致谢
+
+本项目在开发过程中参考 / 复用了以下开源项目,在此致以诚挚感谢:
+
+- [**shing-yu/swiftcat-downloader-flutter**](https://github.com/shing-yu/swiftcat-downloader-flutter.git) —— 七猫小说下载器(swiftcat),本项目的七猫 API 签名、AES 解密及下载逻辑移植自其思路。
+- [**zhongbai2333/Tomato-Novel-Downloader**](https://github.com/zhongbai2333/Tomato-Novel-Downloader.git) —— 番茄小说下载内核(Rust),本项目番茄平台的搜索 / 下载 / 详情由该内核的本地 REST 服务驱动。

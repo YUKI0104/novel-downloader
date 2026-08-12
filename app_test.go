@@ -114,14 +114,6 @@ func TestE2E(t *testing.T) {
 	}
 	t.Logf("✅ 七猫·女生新书榜榜首: %s / %s", qf[0].Title, qf[0].Author)
 
-	// 环境检查
-	st := a.EnvCheck()
-	if !st.FanqieBinPresent {
-		t.Fatalf("番茄内核未找到: %s", st.FanqieBinPath)
-	}
-	t.Logf("✅ 环境: bin=%s server=%v writable=%v",
-		st.FanqieBinPath, st.FanqieServerRunning, st.DownloadDirWritable)
-
 	// 设置往返
 	a.SetSettings(Settings{DownloadDir: t.TempDir(), Format: "epub"})
 	got := a.GetSettings()

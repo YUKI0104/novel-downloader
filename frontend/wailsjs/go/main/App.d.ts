@@ -8,8 +8,6 @@ export function DefaultSettings():Promise<main.Settings>;
 
 export function Download(arg1:string,arg2:string):Promise<void>;
 
-export function EnvCheck():Promise<main.EnvStatus>;
-
 export function GetSettings():Promise<main.Settings>;
 
 export function Library():Promise<Array<main.LibraryItem>>;

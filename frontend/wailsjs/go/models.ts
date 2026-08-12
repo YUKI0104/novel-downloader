@@ -40,24 +40,6 @@ export namespace main {
 	        this.characters = source["characters"];
 	    }
 	}
-	export class EnvStatus {
-	    fanqieBinPresent: boolean;
-	    fanqieBinPath: string;
-	    fanqieServerRunning: boolean;
-	    downloadDirWritable: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new EnvStatus(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.fanqieBinPresent = source["fanqieBinPresent"];
-	        this.fanqieBinPath = source["fanqieBinPath"];
-	        this.fanqieServerRunning = source["fanqieServerRunning"];
-	        this.downloadDirWritable = source["downloadDirWritable"];
-	    }
-	}
 	export class LibraryItem {
 	    name: string;
 	    path: string;

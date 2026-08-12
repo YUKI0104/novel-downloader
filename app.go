@@ -113,14 +113,6 @@ type RankedBook struct {
 	CoverURL string `json:"coverUrl"`
 }
 
-// EnvStatus 环境检查结果。
-type EnvStatus struct {
-	FanqieBinPresent    bool   `json:"fanqieBinPresent"`
-	FanqieBinPath       string `json:"fanqieBinPath"`
-	FanqieServerRunning bool   `json:"fanqieServerRunning"`
-	DownloadDirWritable bool   `json:"downloadDirWritable"`
-}
-
 // App 是 Wails 绑定主体。
 type App struct {
 	ctx      context.Context
@@ -543,32 +535,6 @@ func (a *App) PickDirectory() (string, error) {
 	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "选择下载目录",
 	})
-}
-
-// ---------------------------------------------------------------------------
-// 环境检查
-// ---------------------------------------------------------------------------
-
-// EnvCheck 检查运行环境。
-func (a *App) EnvCheck() EnvStatus {
-	binPath := resolveFanqieBin(a.settings.FanqieBin)
-	st := EnvStatus{
-		FanqieBinPath:       binPath,
-		FanqieServerRunning: a.fanqie.Status(),
-	}
-	if _, err := os.Stat(binPath); err == nil {
-		st.FanqieBinPresent = true
-	}
-	if dir := a.settings.DownloadDir; dir != "" {
-		if err := os.MkdirAll(dir, 0755); err == nil {
-			test := filepath.Join(dir, ".write_test")
-			if err := os.WriteFile(test, []byte("ok"), 0644); err == nil {
-				st.DownloadDirWritable = true
-				os.Remove(test)
-			}
-		}
-	}
-	return st
 }
 
 func stringsTrimDot(s string) string {

@@ -14,10 +14,6 @@ export function Download(arg1, arg2) {
   return window['go']['main']['App']['Download'](arg1, arg2);
 }
 
-export function EnvCheck() {
-  return window['go']['main']['App']['EnvCheck']();
-}
-
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
