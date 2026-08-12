@@ -257,7 +257,16 @@ main { padding-top: 20px; }
 }
 .btn.danger:hover { background: var(--red); border-color: var(--red); color: #fff; }
 .btn.small { padding: 6px 12px; font-size: 13px; }
-.btn.big { padding: 13px 34px; font-size: 16px; font-weight: 600; border-radius: 12px; }
+.btn.big {
+    padding: 0 34px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+}
 
 .status { min-height: 20px; margin: 6px 0 12px; color: var(--text-secondary); font-size: 13px; }
 .status.error { color: var(--red); }
@@ -581,6 +590,28 @@ main { padding-top: 20px; }
 .chip.stat { font-size: 12.5px; padding: 3px 10px; }
 .m-actions { display: flex; align-items: center; gap: 14px; }
 .hint { color: var(--text-secondary); font-size: 13px; flex-shrink: 0; }
+
+/* 短剧后台数据条(简介与下载按钮之间,三项与下载按钮等高) */
+.m-sd-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.sd-item {
+    height: 48px;           /* 与下载按钮(btn.big)等高 */
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    border-radius: 10px;
+    background: var(--fill);
+    border: 1px solid var(--separator);
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+}
+.sd-item b { color: var(--text-secondary); font-weight: 500; }
 
 /* 进度条:在下载按钮右侧同一行,占剩余宽度 */
 .progress-wrap {

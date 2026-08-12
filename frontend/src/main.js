@@ -417,6 +417,7 @@ function resetModal() {
     $('m-download').disabled = downloading;
     $('m-progress-wrap').classList.add('hidden');
     $('m-result').classList.add('hidden');
+    $('m-sd-strip').classList.add('hidden');
     $('m-progress-bar').style.width = '0%';
     $('m-progress-text').textContent = '';
     $('m-cover').style.visibility = 'hidden';
@@ -465,6 +466,10 @@ async function showDetail(platform, bookId, fallbackTitle) {
             $('m-cover').style.visibility = 'visible';
         }
         sizeCover();
+        // 番茄小说:自动查短剧后台,在简介与下载按钮之间显示 IP 数据
+        if (platform === 'fanqie' && info.title) {
+            loadShortdramaStrip(info.title);
+        }
     } catch (e) {
         $('m-title').textContent = fallbackTitle || '加载失败';
         $('m-desc').textContent = '详情加载失败: ' + (e.message || e);
@@ -768,6 +773,22 @@ async function doShortdramaSearch() {
 }
 $('btn-sd-search').addEventListener('click', doShortdramaSearch);
 $('sd-keyword').addEventListener('keydown', (e) => { if (e.key === 'Enter') doShortdramaSearch(); });
+
+// 番茄详情弹窗里自动查短剧后台,在简介与下载按钮之间显示 上架/申请/改编中
+async function loadShortdramaStrip(title) {
+    const strip = $('m-sd-strip');
+    try {
+        const items = await ShortdramaSearch(title);
+        const best = items[0];
+        if (!best) return;
+        $('sd-online').textContent = best.onlineMonth || '—';
+        $('sd-apply').textContent = best.selectedCnt || '0';
+        $('sd-adapting').textContent = best.adaptingCnt || '0';
+        strip.classList.remove('hidden');
+    } catch (e) {
+        // 静默失败,不打扰主流程
+    }
+}
 
 // ---------------------------------------------------------------------------
 // 启动

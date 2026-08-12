@@ -17,6 +17,9 @@ macOS 免费小说下载 GUI,支持**七猫小说**和**番茄小说**两大平�
 - 📖 **书籍详情**:作者、简介、章数、评分、字数、热度、榜单、分类、主角
 - ⬇️ **一键下载**:TXT / EPUB,实时进度(章数百分比)
 - 📂 **已下载管理**:列表 + 删除(仅移除记录 / 同时删除文件)+ Finder 定位
+- 🎬 **短剧后台搜索**(番茄 IP):自动读取 Edge 登录态,查询番茄短剧创作者中心
+  - 打开番茄书籍详情时自动搜索,在简介与下载按钮之间显示「上架 / 申请 / 改编中」
+  - 设置页可手动按书名搜索 IP,查看评分 / 字数 / 申请人数 / 同 IP 改编中 / 在读等数据
 - ⚙️ **设置**:下载目录、保存格式(TXT/EPUB)
 - 📐 固定窗口(1100×780,不可拉伸),明暗双模式跟随系统
 
@@ -26,6 +29,7 @@ macOS 免费小说下载 GUI,支持**七猫小说**和**番茄小说**两大平�
 novel-downloader-wails/
 ├── main.go            # Wails 入口(固定窗口 1100×780)
 ├── app.go             # 绑定层:搜索 / 详情 / 榜单 / 下载 / 设置 / 环境
+├── shortdrama.go      # 短剧后台搜索(读 Edge 登录态 + 调 shortdramas IP 接口)
 ├── app_test.go        # headless 端到端测试(go test,会真连各平台 API)
 ├── qimao/             # 七猫下载器(签名 API + AES 解密 + 官网榜单接口)
 ├── fanqie/            # 番茄下载器(管理 Rust 内核服务 + 官网榜单解析)
@@ -76,6 +80,9 @@ go test -run TestE2E -v   # 无 GUI 的逻辑链路测试(会真连七猫/番茄
   榜单走官网 web 接口 `www.qimao.com/qimaoapi/api/rank/book-list`(无需签名,参数 `is_girl` + `rank_type`)。
 - **番茄 API**:通过 Rust 服务 `127.0.0.1:18423` 的 REST 接口;榜单抓官网 `/rank` 页(分类导航),
   因官网书名被自定义字体混淆(PUA 私用区字符),榜单需经内核解码书名,已做并发 + 缓存优化。
+- **短剧后台搜索**:读 Edge cookie 库解密 `sessionid`(keychain 密钥 + PBKDF2("saltysalt",1003) + AES-128-CBC
+  + 库版本≥24 去 32 字节前缀),调 `www.shortdramas.com/api/origin/cp/playlet/ip/list` 按书名搜番茄 IP。
+  需先在 Edge 登录过 `shortdramas.com` 并保持会话有效。
 - **关键坑**:`http.Client{Timeout: 60}` 是 **60 纳秒**而非 60 秒,必须写 `60 * time.Second`。
 
 ## 🙏 致谢
