@@ -4,7 +4,7 @@ import {
     Search, BookInfo, Download, Library,
     GetSettings, SetSettings,
     OpenFolder, PickDirectory, RemoveLibraryItem,
-    RankingCategories, RankingBooks, QimaoRankBooks,
+    RankingCategories, RankingBooks, QimaoRankBooks, QimaoAdaptBooks,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -127,6 +127,7 @@ const QIMAO_TYPES = [
     {t: '3', name: '完结榜'},
     {t: '4', name: '收藏榜'},
     {t: '6', name: '更新榜'},
+    {t: 'adapt', name: '🎬 改编书单'},
 ];
 let qimaoGender = '0'; // 0=男生 1=女生
 let qimaoType = '1';
@@ -141,6 +142,7 @@ function initQimao() {
     $('rank-type-row').classList.add('hidden');
     $('rank-genres').classList.remove('hidden');
     renderQimaoTypes();
+    updateQimaoGenderVis();
     loadQimao();
 }
 
@@ -154,9 +156,17 @@ function renderQimaoTypes() {
             qimaoType = d.t;
             wrap.querySelectorAll('.genre-chip').forEach((x) => x.classList.remove('active'));
             c.classList.add('active');
+            updateQimaoGenderVis();
             loadQimao();
         });
         wrap.appendChild(c);
+    });
+}
+
+// 改编书单没有男/女生之分,隐藏性别按钮
+function updateQimaoGenderVis() {
+    document.querySelectorAll('#tab-rank .rank-gender').forEach((b) => {
+        b.classList.toggle('hidden', qimaoType === 'adapt');
     });
 }
 
@@ -165,7 +175,9 @@ async function loadQimao() {
     ul.innerHTML = '';
     $('rank-status').textContent = '加载榜单…';
     try {
-        const books = await QimaoRankBooks(qimaoGender, qimaoType);
+        const books = qimaoType === 'adapt'
+            ? await QimaoAdaptBooks('')
+            : await QimaoRankBooks(qimaoGender, qimaoType);
         ul.innerHTML = '';
         if (!books.length) {
             ul.appendChild(el('li', 'empty', '暂无数据'));
@@ -173,7 +185,8 @@ async function loadQimao() {
             return;
         }
         const tname = (QIMAO_TYPES.find((d) => d.t === qimaoType) || {}).name || '';
-        $('rank-status').textContent = `TOP ${books.length} · ${qimaoGender === '0' ? '男生' : '女生'}·${tname}`;
+        const label = qimaoType === 'adapt' ? tname : `${qimaoGender === '0' ? '男生' : '女生'}·${tname}`;
+        $('rank-status').textContent = `TOP ${books.length} · ${label}`;
         books.forEach((b) => {
             const li = el('li', 'result-item rank-item');
             li.appendChild(el('div', 'rank-no' + (b.position <= 3 ? ' top' : ''), String(b.position)));
@@ -424,6 +437,16 @@ function resetModal() {
     $('m-cover').removeAttribute('src');
 }
 
+// 封面按弹窗内容高度取 3:4 比例(实测七猫/番茄封面均为 3:4),直接写死尺寸,防拉伸裁切。
+function sizeCover() {
+    const cover = $('m-cover').parentElement;
+    const body = cover.parentElement; // .modal-body
+    let h = body.clientHeight;
+    h = Math.max(280, Math.min(h, 560));
+    cover.style.height = h + 'px';
+    cover.style.width = Math.round(h * 0.75) + 'px';
+}
+
 async function showDetail(platform, bookId, fallbackTitle) {
     currentBook = {platform, bookId};
     resetModal();
@@ -455,6 +478,7 @@ async function showDetail(platform, bookId, fallbackTitle) {
             $('m-cover').src = info.coverUrl;
             $('m-cover').style.visibility = 'visible';
         }
+        sizeCover();
     } catch (e) {
         $('m-title').textContent = fallbackTitle || '加载失败';
         $('m-desc').textContent = '详情加载失败: ' + (e.message || e);

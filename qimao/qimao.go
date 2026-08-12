@@ -191,6 +191,19 @@ type RankBook struct {
 	Category string
 }
 
+// AdaptBook 七猫官方「剧本改编书单」书籍。
+type AdaptBook struct {
+	ID       string
+	Title    string
+	Author   string
+	Words    string // 如 "4.6万字"
+	Category string
+	IsOver   bool
+	CoverURL string
+	Intro    string
+	ClientID int // 改编类型(如 1=漫剧/动漫, 3=短剧)
+}
+
 type Book struct {
 	BookID     string
 	Title      string
@@ -410,6 +423,78 @@ func (c *Client) RankingBooks(isGirl, rankType string) ([]RankBook, error) {
 		})
 	}
 	return books, nil
+}
+
+// ---------------------------------------------------------------------------
+// 官方「剧本改编书单」(作者中心 API)
+// ---------------------------------------------------------------------------
+
+const qimaoAdaptAPI = "https://zuozhe.qimao.com/api/pc/v1/book/screenplay-ranking-list"
+
+// AdaptBookList 返回七猫官方剧本改编书单(前20本)。
+// direction: "" 全部, "1" 动漫短剧, "2" 真人短剧。
+func (c *Client) AdaptBookList(direction string) ([]AdaptBook, error) {
+	params := url.Values{}
+	params.Set("direction", direction)
+	params.Set("channel", "")
+	params.Set("category", "")
+	params.Set("words", "")
+	params.Set("is_over", "")
+	params.Set("ranking_type", "")
+	params.Set("date_type", "1")
+	params.Set("page_size", "20")
+	params.Set("page", "1")
+	req, err := http.NewRequest(http.MethodGet, qimaoAdaptAPI+"?"+params.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Referer", "https://zuozhe.qimao.com/front/screenplay/adapt-book-list")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("改编书单 HTTP %d", resp.StatusCode)
+	}
+	var payload struct {
+		Data struct {
+			BookList []map[string]interface{} `json:"book_list"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, err
+	}
+	books := make([]AdaptBook, 0, len(payload.Data.BookList))
+	for _, it := range payload.Data.BookList {
+		id := strconv.FormatInt(int64(intOf(it["book_id"])), 10)
+		if id == "0" {
+			continue
+		}
+		books = append(books, AdaptBook{
+			ID:       id,
+			Title:    strOf(it["book_title"]),
+			Author:   strOf(it["author_name"]),
+			Words:    wordsText(it["words_num"]),
+			Category: strOf(it["category1_name"]),
+			IsOver:   strOf(it["is_over"]) == "完结",
+			CoverURL: strOf(it["image_link"]),
+			Intro:    strOf(it["intro"]),
+			ClientID: intOf(it["client_id"]),
+		})
+	}
+	return books, nil
+}
+
+// wordsText 从 words_num 结构 {number,value,unit,title} 拼 "4.6万字"。
+func wordsText(v interface{}) string {
+	wn, ok := v.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(strOf(wn["value"]) + strOf(wn["unit"]) + strOf(wn["title"]))
 }
 
 func (c *Client) DownloadURL(bookID string) (string, error) {

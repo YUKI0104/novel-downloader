@@ -114,6 +114,17 @@ func TestE2E(t *testing.T) {
 	}
 	t.Logf("✅ 七猫·女生新书榜榜首: %s / %s", qf[0].Title, qf[0].Author)
 
+	// 七猫改编书单
+	adapts, err := a.QimaoAdaptBooks("")
+	if err != nil {
+		t.Fatalf("qimao adapt: %v", err)
+	}
+	if len(adapts) == 0 {
+		t.Fatal("七猫改编书单为空")
+	}
+	t.Logf("✅ 七猫改编书单: %d 本, 榜首=#%d %s / %s / %s",
+		len(adapts), adapts[0].Position, adapts[0].Title, adapts[0].Author, adapts[0].Words)
+
 	// 设置往返
 	a.SetSettings(Settings{DownloadDir: t.TempDir(), Format: "epub"})
 	got := a.GetSettings()

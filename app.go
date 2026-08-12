@@ -356,6 +356,27 @@ func (a *App) RankingBooks(rankURL string) ([]RankedBook, error) {
 	return out, nil
 }
 
+// QimaoAdaptBooks 七猫官方剧本改编书单(前20)。direction: "" 全部, "1" 动漫短剧, "2" 真人短剧。
+func (a *App) QimaoAdaptBooks(direction string) ([]RankedBook, error) {
+	books, err := a.qimao.AdaptBookList(direction)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]RankedBook, 0, len(books))
+	for i, b := range books {
+		out = append(out, RankedBook{
+			Position: i + 1,
+			Platform: "qimao",
+			BookID:   b.ID,
+			Title:    b.Title,
+			Author:   b.Author,
+			Words:    b.Words,
+			CoverURL: b.CoverURL,
+		})
+	}
+	return out, nil
+}
+
 // QimaoRankBooks 七猫榜单书籍(前20)。isGirl: 0=男生 1=女生; rankType: 1大热 2新书 3完结 4收藏 6更新。
 func (a *App) QimaoRankBooks(isGirl, rankType string) ([]RankedBook, error) {
 	books, err := a.qimao.RankingBooks(isGirl, rankType)

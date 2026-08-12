@@ -30,6 +30,10 @@ export function PickDirectory() {
   return window['go']['main']['App']['PickDirectory']();
 }
 
+export function QimaoAdaptBooks(arg1) {
+  return window['go']['main']['App']['QimaoAdaptBooks'](arg1);
+}
+
 export function QimaoRankBooks(arg1, arg2) {
   return window['go']['main']['App']['QimaoRankBooks'](arg1, arg2);
 }

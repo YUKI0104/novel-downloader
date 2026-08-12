@@ -16,6 +16,8 @@ export function OpenFolder(arg1:string):Promise<void>;
 
 export function PickDirectory():Promise<string>;
 
+export function QimaoAdaptBooks(arg1:string):Promise<Array<main.RankedBook>>;
+
 export function QimaoRankBooks(arg1:string,arg2:string):Promise<Array<main.RankedBook>>;
 
 export function RankingBooks(arg1:string):Promise<Array<main.RankedBook>>;

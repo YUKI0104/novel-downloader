@@ -440,7 +440,7 @@ main { padding-top: 20px; }
     background: var(--card);
     border: 1px solid var(--separator);
     border-radius: var(--radius-lg);
-    width: min(820px, calc(100vw - 40px));
+    width: min(960px, calc(100vw - 40px));
     min-height: 480px;
     max-height: calc(100vh - 40px);
     box-shadow: var(--shadow-lg);
@@ -478,16 +478,22 @@ main { padding-top: 20px; }
 .cover {
     flex-shrink: 0;
     width: auto;
-    min-width: 210px;
+    min-width: 230px;
     min-height: 280px;
+    max-width: 380px;             /* 防极端高内容时封面过宽 */
     align-self: stretch;          /* 高度延伸到内容区底部(标题→下载按钮) */
-    aspect-ratio: 3 / 4;          /* 书封面 3:4,宽度随高度按比例放大,不再截断 */
+    aspect-ratio: 3 / 4;          /* 宽度随高度按比例,完整填满不留白、不裁剪 */
     border-radius: 14px;
     background: var(--fill);
     overflow: hidden;
     box-shadow: var(--shadow-md);
 }
-.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
 .m-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .m-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .m-title-row h2 { font-size: 22px; letter-spacing: -0.02em; font-weight: 700; }
