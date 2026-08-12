@@ -73,7 +73,7 @@
 
 ## 🚀 快速上手
 
-1. **下载**:从 [Releases](https://github.com/YUKI0104/novel-downloader/releases) 获取 `FanQieMao-Downloader-v1.1.0.dmg`(macOS arm64)。
+1. **下载**:从 [Releases](https://github.com/YUKI0104/novel-downloader/releases) 获取 `FanQieMao-Downloader-v1.2.0.dmg`(macOS arm64)。
 2. **安装**:打开 DMG,把 App 拖入「应用程序」。因未签名,首次打开请右键 →「打开」,或执行 `xattr -cr /Applications/番茄猫下载器.app`。
 3. **下载小说**:在搜索页搜书名 → 点开详情 → 下载。默认存到 `~/Downloads`;顶部「📂 下载」按钮管理已下载文件。
 4. **短剧 IP**(可选):首次进入会询问是否启用。启用后需先在 **Chrome / Edge / Brave / Vivaldi / Opera** 任一浏览器登录 `www.shortdramas.com`(番茄短剧创作者中心),本软件会自动检测并读取该登录态。
