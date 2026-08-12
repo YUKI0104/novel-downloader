@@ -289,6 +289,7 @@ async function loadQimao() {
         }
         const tname = (QIMAO_TYPES.find((d) => d.t === qimaoType) || {}).name || '';
         $('rank-status').textContent = `TOP ${books.length} · ${qimaoGender === '0' ? '男生' : '女生'}·${tname}`;
+        const rankChecks = [];
         books.forEach((b) => {
             const li = el('li', 'result-item rank-item');
             li.appendChild(el('div', 'rank-no' + (b.position <= 3 ? ' top' : ''), String(b.position)));
@@ -312,8 +313,16 @@ async function loadQimao() {
             li.appendChild(el('div', 'ri-arrow', '›'));
             li.addEventListener('click', () => showDetail('qimao', b.bookId, b.title));
             ul.appendChild(li);
+            rankChecks.push({title: b.title, li});
         });
-        $('rank-status').textContent = '';
+        // 七猫榜单: 自动查短剧后台,命中高亮并排最前
+        if (rankChecks.length) {
+            try { if (!(await GetSettings()).shortdramaIgnored) {
+                checkShortdramaBackend(rankChecks, 'rank-list').then((hits) => {
+                    if (hits > 0) $('rank-status').textContent = `TOP ${books.length} · ${qimaoGender === '0' ? '男生' : '女生'}·${tname} · ${hits} 本在短剧后台`;
+                });
+            }} catch (e) {}
+        }
     } catch (e) {
         $('rank-status').textContent = '加载榜单失败: ' + (e.message || e);
     }
@@ -442,7 +451,7 @@ async function doSearch() {
             li.addEventListener('click', () => showDetail(platform, it.bookId, it.title));
             ul.appendChild(li);
             if (platform === 'qimao') enrichTargets.push({bookId: it.bookId, chips});
-            if (platform === 'fanqie') sdChecks.push({title: it.title, li});
+            sdChecks.push({title: it.title, li});
         });
         // 七猫后台补全人气/榜单(搜索结果不含,需查详情)
         if (enrichTargets.length) enrichQimao(enrichTargets);
