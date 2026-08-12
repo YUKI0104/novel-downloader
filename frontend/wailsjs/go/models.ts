@@ -213,6 +213,7 @@ export namespace main {
 	    format: string;
 	    fanqieBin: string;
 	    shortdramaIgnored: boolean;
+	    shortdramaPrompted: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -224,6 +225,7 @@ export namespace main {
 	        this.format = source["format"];
 	        this.fanqieBin = source["fanqieBin"];
 	        this.shortdramaIgnored = source["shortdramaIgnored"];
+	        this.shortdramaPrompted = source["shortdramaPrompted"];
 	    }
 	}
 	export class ShortdramaIP {

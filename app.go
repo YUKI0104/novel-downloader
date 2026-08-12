@@ -18,10 +18,11 @@ import (
 
 // Settings 应用设置。
 type Settings struct {
-	DownloadDir       string `json:"downloadDir"`       // 下载目录
-	Format            string `json:"format"`            // txt | epub
-	FanqieBin         string `json:"fanqieBin"`         // Rust binary 路径(空=自动查找 ~/bin)
-	ShortdramaIgnored bool   `json:"shortdramaIgnored"` // 用户已忽略短剧后台数据功能
+	DownloadDir        string `json:"downloadDir"`        // 下载目录
+	Format             string `json:"format"`             // txt | epub
+	FanqieBin          string `json:"fanqieBin"`          // Rust binary 路径(空=自动查找 ~/bin)
+	ShortdramaIgnored  bool   `json:"shortdramaIgnored"`  // 用户已忽略短剧后台数据功能
+	ShortdramaPrompted bool   `json:"shortdramaPrompted"` // 是否已询问过短剧IP功能(首次进入弹窗)
 }
 
 func (s Settings) withDefaults() Settings {
@@ -222,12 +223,19 @@ func (a *App) SetSettings(s Settings) {
 	a.initClients()
 }
 
-// SetShortdramaIgnored 设置是否忽略短剧后台数据功能(忽略后不再显示)。
+// SetShortdramaIgnored 记录用户对短剧IP功能的首次选择(忽略后不再显示)。
 func (a *App) SetShortdramaIgnored(ignored bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.settings.ShortdramaIgnored = ignored
+	a.settings.ShortdramaPrompted = true
 	a.saveSettings()
+}
+
+// ShortdramaSessionStatus 检查本机是否有浏览器登录态可供短剧IP查询。
+func (a *App) ShortdramaSessionStatus() bool {
+	_, err := shortdramaSessionID()
+	return err == nil
 }
 
 // DefaultSettings 返回默认设置。

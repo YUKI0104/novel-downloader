@@ -5,7 +5,7 @@ import {
     GetSettings, SetSettings,
     OpenFolder, PickDirectory, RemoveLibraryItem,
     RankingCategories, RankingBooks, QimaoRankBooks, QimaoAdaptConfig, QimaoAdaptBooks,
-    ShortdramaSearch, SetShortdramaIgnored,
+    ShortdramaSearch, SetShortdramaIgnored, ShortdramaSessionStatus,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -776,8 +776,42 @@ $('btn-sd-ignore').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// 首次进入:询问是否启用短剧IP查询
+// ---------------------------------------------------------------------------
+async function maybeShowShortdramaPrompt() {
+    try {
+        const s = await GetSettings();
+        if (s.shortdramaPrompted) return;   // 已询问过
+        $('sd-first-backdrop').classList.remove('hidden');
+    } catch (e) { /* 静默 */ }
+}
+
+$('btn-sd-enable').addEventListener('click', async () => {
+    try {
+        await SetShortdramaIgnored(false);
+        $('sd-first-backdrop').classList.add('hidden');
+        // 检查本地浏览器登录态,给用户反馈
+        const ok = await ShortdramaSessionStatus();
+        toast(ok ? '✅ 已启用,检测到浏览器登录态' : '已启用;未检测到浏览器登录态,打开番茄详情时会提示登录', !ok);
+    } catch (e) {
+        toast('操作失败: ' + (e.message || e), true);
+    }
+});
+
+$('btn-sd-skip').addEventListener('click', async () => {
+    try {
+        await SetShortdramaIgnored(true);
+        $('sd-first-backdrop').classList.add('hidden');
+        toast('已忽略短剧IP查询');
+    } catch (e) {
+        toast('操作失败: ' + (e.message || e), true);
+    }
+});
+
+// ---------------------------------------------------------------------------
 // 启动
 // ---------------------------------------------------------------------------
 loadSettings();
 loadLibrary();
 initRank();
+maybeShowShortdramaPrompt();

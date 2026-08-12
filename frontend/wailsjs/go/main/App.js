@@ -69,3 +69,7 @@ export function SetShortdramaIgnored(arg1) {
 export function ShortdramaSearch(arg1) {
   return window['go']['main']['App']['ShortdramaSearch'](arg1);
 }
+
+export function ShortdramaSessionStatus() {
+  return window['go']['main']['App']['ShortdramaSessionStatus']();
+}

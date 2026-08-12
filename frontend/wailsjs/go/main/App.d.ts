@@ -36,3 +36,5 @@ export function SetSettings(arg1:main.Settings):Promise<void>;
 export function SetShortdramaIgnored(arg1:boolean):Promise<void>;
 
 export function ShortdramaSearch(arg1:string):Promise<Array<main.ShortdramaIP>>;
+
+export function ShortdramaSessionStatus():Promise<boolean>;
