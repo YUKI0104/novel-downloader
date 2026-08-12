@@ -792,7 +792,7 @@ $('btn-save-settings').addEventListener('click', async () => {
     s.downloadDir = $('set-dir').textContent.trim() || s.downloadDir;
     s.format = $('set-format').value;
     await SetSettings(s);
-    await SetShortdramaIgnored(!$('set-sd-enabled').checked);   // 开关控制短剧IP查询
+    await SetShortdramaIgnored(!$('set-sd-enabled').checked);   // 开关控制短剧模式
     $('settings-pop').classList.add('hidden');
     toast('设置已保存', false, 'check');
     loadLibrary();
@@ -838,7 +838,7 @@ $('btn-sd-ignore').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 首次进入:询问是否启用短剧IP查询
+// 首次进入:询问是否启用短剧模式
 // ---------------------------------------------------------------------------
 async function maybeShowShortdramaPrompt() {
     try {
@@ -864,7 +864,7 @@ $('btn-sd-skip').addEventListener('click', async () => {
     try {
         await SetShortdramaIgnored(true);
         $('sd-first-backdrop').classList.add('hidden');
-        toast('已忽略短剧IP查询');
+        toast('已忽略短剧模式');
     } catch (e) {
         toast('操作失败: ' + (e.message || e), true);
     }

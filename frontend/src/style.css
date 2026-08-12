@@ -866,6 +866,16 @@ main { padding-top: 20px; }
     justify-content: flex-end;
     gap: 10px;
 }
+.btn-save {
+    width: 44px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+}
+.btn-save .save-sym { width: 18px; height: 18px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > span { font-weight: 500; font-size: 13px; color: var(--text); }
 .row { display: flex; gap: 10px; align-items: center; }
