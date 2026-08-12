@@ -160,6 +160,7 @@ input, textarea { user-select: text; }
         inset 0 0 0 .5px rgba(255, 255, 255, .35),
         0 1px 3px rgba(0, 0, 0, .22);
 }
+.header-actions { display: flex; gap: 10px; }
 
 .tabs {
     display: flex;
@@ -523,6 +524,48 @@ main { padding-top: 20px; }
     flex-direction: column;
     animation: popIn .22s cubic-bezier(.2, .9, .3, 1.1);
 }
+.modal.modal-panel {
+    width: min(680px, calc(100vw - 40px));
+    min-height: 0;
+    max-height: calc(100vh - 60px);
+}
+.panel-body {
+    padding: 28px 30px 30px;
+    overflow-y: auto;
+}
+.panel-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+}
+
+/* 设置开关 */
+.switch { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+    background: var(--fill-hover);
+    border-radius: 13px;
+    transition: background .2s;
+}
+.slider::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+    transition: transform .2s;
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(18px); }
+
 .modal-close {
     position: absolute;
     top: 16px;

@@ -10,11 +10,10 @@
 <div id="app">
     <header class="app-header">
         <div class="brand"><span class="brand-icon">📚</span>小说下载器</div>
-        <nav class="tabs">
-            <button class="tab active" data-tab="search">搜索下载</button>
-            <button class="tab" data-tab="library">已下载</button>
-            <button class="tab" data-tab="settings">设置</button>
-        </nav>
+        <div class="header-actions">
+            <button id="btn-open-library" class="btn ghost">📂 下载</button>
+            <button id="btn-open-settings" class="btn ghost">⚙️ 设置</button>
+        </div>
     </header>
 
     <main>
@@ -72,18 +71,30 @@
                 <ul id="results" class="results"></ul>
             </div>
         </section>
+    </main>
+</div>
 
-        <!-- 已下载 -->
-        <section id="tab-library" class="tab-panel">
+<!-- 下载管理弹窗 -->
+<div id="lib-backdrop" class="modal-backdrop hidden">
+    <div class="modal modal-panel">
+        <button class="modal-close" id="lib-close" title="关闭">✕</button>
+        <div class="panel-body">
+            <div class="panel-title">📂 已下载</div>
             <div class="search-bar">
                 <button id="btn-refresh-lib" class="btn ghost">刷新</button>
                 <button id="btn-open-dir" class="btn ghost">打开下载目录</button>
             </div>
             <ul id="lib-list" class="results"></ul>
-        </section>
+        </div>
+    </div>
+</div>
 
-        <!-- 设置 -->
-        <section id="tab-settings" class="tab-panel">
+<!-- 设置弹窗 -->
+<div id="settings-backdrop" class="modal-backdrop hidden">
+    <div class="modal modal-panel">
+        <button class="modal-close" id="settings-close" title="关闭">✕</button>
+        <div class="panel-body">
+            <div class="panel-title">⚙️ 设置</div>
             <div class="settings-card">
                 <label class="field">
                     <span>下载目录</span>
@@ -99,12 +110,22 @@
                         <option value="epub">EPUB</option>
                     </select>
                 </label>
+                <label class="field">
+                    <span>短剧IP查询</span>
+                    <div class="row">
+                        <label class="switch">
+                            <input type="checkbox" id="set-sd-enabled"/>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="hint">打开番茄书籍详情时自动查询是否已被改编成短剧</span>
+                    </div>
+                </label>
                 <div class="row">
                     <button id="btn-save-settings" class="btn primary">保存设置</button>
                 </div>
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 </div>
 
 <!-- 书籍详情弹窗 -->

@@ -64,17 +64,21 @@ function fmtSize(n) {
 }
 
 // ---------------------------------------------------------------------------
-// 标签页切换
+// 下载 / 设置弹窗
 // ---------------------------------------------------------------------------
-document.querySelectorAll('.tab').forEach((btn) => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach((b) => b.classList.remove('active'));
-        document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
-        btn.classList.add('active');
-        $('tab-' + btn.dataset.tab).classList.add('active');
-        if (btn.dataset.tab === 'library') loadLibrary();
-    });
+$('btn-open-library').addEventListener('click', () => {
+    $('lib-backdrop').classList.remove('hidden');
+    loadLibrary();
 });
+$('lib-close').addEventListener('click', () => $('lib-backdrop').classList.add('hidden'));
+$('lib-backdrop').addEventListener('click', (e) => { if (e.target === $('lib-backdrop')) $('lib-backdrop').classList.add('hidden'); });
+
+$('btn-open-settings').addEventListener('click', () => {
+    $('settings-backdrop').classList.remove('hidden');
+    loadSettings();
+});
+$('settings-close').addEventListener('click', () => $('settings-backdrop').classList.add('hidden'));
+$('settings-backdrop').addEventListener('click', (e) => { if (e.target === $('settings-backdrop')) $('settings-backdrop').classList.add('hidden'); });
 
 // ---------------------------------------------------------------------------
 // 排行榜(整合进搜索页:平台共用顶部下拉,频道按钮 + 榜单名称 + 题材 一行)
@@ -722,6 +726,7 @@ async function loadSettings() {
     const s = await GetSettings();
     $('set-dir').value = s.downloadDir || '';
     $('set-format').value = s.format || 'txt';
+    $('set-sd-enabled').checked = !s.shortdramaIgnored;   // 短剧IP开关 = 启用状态
 }
 
 $('btn-pick-dir').addEventListener('click', async () => {
@@ -734,6 +739,7 @@ $('btn-save-settings').addEventListener('click', async () => {
     s.downloadDir = $('set-dir').value.trim() || s.downloadDir;
     s.format = $('set-format').value;
     await SetSettings(s);
+    await SetShortdramaIgnored(!$('set-sd-enabled').checked);   // 开关控制短剧IP查询
     toast('✅ 设置已保存');
     loadLibrary();
 });
