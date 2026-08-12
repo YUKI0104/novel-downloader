@@ -496,6 +496,7 @@ function checkShortdramaBackend(items, containerId) {
             try {
                 const r = await ShortdramaSearch(it.title);
                 if (r.length > 0) {
+                    const best = r[0];
                     hits++;
                     it.li.classList.add('sd-hit');
                     const tag = el('span', 'sd-tag');
@@ -505,6 +506,12 @@ function checkShortdramaBackend(items, containerId) {
                     tag.appendChild(s);
                     tag.appendChild(document.createTextNode('短剧'));
                     it.li.appendChild(tag);
+                    // 卡片上显示 申请 / 改编中 数量
+                    const chipsRow = it.li.querySelector('.ri-chips');
+                    if (chipsRow && best) {
+                        if (parseInt(best.selectedCnt || '0', 10) > 0) chipsRow.appendChild(chipSym('sd-count', 'person2', `申请 ${best.selectedCnt}`));
+                        if (parseInt(best.adaptingCnt || '0', 10) > 0) chipsRow.appendChild(chipSym('sd-count', 'film', `改编 ${best.adaptingCnt}`));
+                    }
                 }
             } catch (e) { /* 无会话等错误静默 */ }
         }
