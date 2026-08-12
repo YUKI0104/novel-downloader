@@ -6,6 +6,13 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "info": {
+    "companyName": "yuki",
+    "productName": "NovelDownloader",
+    "productVersion": "1.0.0",
+    "copyright": "© 2026 yuki",
+    "comments": "macOS 专用的番茄/七猫平台小说下载器"
+  },
   "author": {
     "name": "yuki",
     "email": ""
