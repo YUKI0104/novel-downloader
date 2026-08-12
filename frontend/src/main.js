@@ -318,7 +318,7 @@ async function loadQimao() {
         // 七猫榜单: 自动查短剧后台,命中高亮并排最前
         if (rankChecks.length) {
             try { if (!(await GetSettings()).shortdramaIgnored) {
-                checkShortdramaBackend(rankChecks, 'rank-list').then((hits) => {
+                checkShortdramaBackend(rankChecks, 'rank-list', false).then((hits) => {
                     if (hits > 0) $('rank-status').textContent = `TOP ${books.length} · ${qimaoGender === '0' ? '男生' : '女生'}·${tname} · ${hits} 本在短剧后台`;
                 });
             }} catch (e) {}
@@ -377,7 +377,7 @@ async function loadRank(url) {
         // 番茄榜单: 自动查短剧后台,命中高亮并排最前
         if (rankChecks.length) {
             try { if (!(await GetSettings()).shortdramaIgnored) {
-                checkShortdramaBackend(rankChecks, 'rank-list').then((hits) => {
+                checkShortdramaBackend(rankChecks, 'rank-list', false).then((hits) => {
                     if (hits > 0) $('rank-status').textContent = `TOP ${books.length} · ${rankLabel()} · ${hits} 本在短剧后台`;
                 });
             }} catch (e) {}
@@ -451,17 +451,22 @@ async function doSearch() {
             li.addEventListener('click', () => showDetail(platform, it.bookId, it.title));
             ul.appendChild(li);
             if (platform === 'qimao') enrichTargets.push({bookId: it.bookId, chips});
-            sdChecks.push({title: it.title, li});
+            sdChecks.push({title: it.title, li, reading: numReading(it.hot), wordsN: numWan(it.words)});
         });
         // 七猫后台补全人气/榜单(搜索结果不含,需查详情)
         if (enrichTargets.length) enrichQimao(enrichTargets);
-        // 番茄: 自动检查是否在短剧后台,在则红色高亮 + 排最前
+        // 排序 + 短剧后台检查
         if (sdChecks.length) {
-            try { if (!(await GetSettings()).shortdramaIgnored) {
-                checkShortdramaBackend(sdChecks, 'results').then((hits) => {
-                    if (hits > 0) setStatus(`共 ${items.length} 条结果 · ${hits} 本在短剧后台`);
-                });
-            }} catch (e) {}
+            try {
+                const ignored = (await GetSettings()).shortdramaIgnored;
+                if (ignored) {
+                    sortList(sdChecks, 'results', false);   // 短剧模式关闭: 在读→字数
+                } else {
+                    checkShortdramaBackend(sdChecks, 'results', true).then((hits) => {
+                        if (hits > 0) setStatus(`共 ${items.length} 条结果 · ${hits} 本在短剧后台`);
+                    });
+                }
+            } catch (e) {}
         }
     } catch (e) {
         setStatus('搜索失败: ' + (e.message || e), true);
@@ -486,17 +491,62 @@ async function enrichQimao(targets) {
     await Promise.all([worker(), worker(), worker()]);
 }
 
-// 番茄列表: 自动查短剧后台,命中则红色高亮 + 短剧角标 + 排最前
-function checkShortdramaBackend(items, containerId) {
+// 数字转万(万为单位), 用于排序:"536万字"→536, "221.6万"→221.6, "13776"→1.3776
+function numWan(str) {
+    const s = String(str || '');
+    const m = s.match(/(\d+(?:\.\d+)?)\s*万/);
+    if (m) return parseFloat(m[1]);
+    const n = s.match(/(\d+(?:\.\d+)?)/);
+    return n ? parseFloat(n[1]) / 10000 : 0;
+}
+// 从 hot 里取在读人数("221.6万 人气 · 22.2万 在读" → 22.2)
+function numReading(hot) {
+    const s = String(hot || '');
+    const m = s.match(/(\d+(?:\.\d+)?)\s*万[^·，。]*在读/);
+    if (m) return parseFloat(m[1]);
+    return numWan(s);
+}
+
+// 排序并重新渲染。sdEnabled: 是否短剧模式(排序规则不同)
+function sortList(items, containerId, sdEnabled) {
+    items.sort((a, b) => {
+        if (sdEnabled) {
+            if (a.inBackend !== b.inBackend) return a.inBackend ? -1 : 1;
+            if (a.inBackend && a.month !== b.month) return (b.month || '').localeCompare(a.month || '');
+        }
+        if (a.reading !== b.reading) return b.reading - a.reading;
+        if (a.wordsN !== b.wordsN) return b.wordsN - a.wordsN;
+        if (sdEnabled) {
+            if (a.adapting !== b.adapting) return b.adapting - a.adapting;
+            return b.apply - a.apply;
+        }
+        return 0;
+    });
+    const ul = $(containerId);
+    ul.innerHTML = '';
+    items.forEach((it) => ul.appendChild(it.li));
+}
+
+// 番茄/七猫列表: 自动查短剧后台,命中红色高亮+角标+数量。
+// fullSort=true 时按完整规则排序;否则仅入库书排最前(排行榜用)。
+function checkShortdramaBackend(items, containerId, fullSort) {
     let idx = 0;
     let hits = 0;
     const worker = async () => {
         while (idx < items.length) {
             const it = items[idx++];
+            it.inBackend = false;
+            it.month = '';
+            it.adapting = 0;
+            it.apply = 0;
             try {
                 const r = await ShortdramaSearch(it.title);
                 if (r.length > 0) {
                     const best = r[0];
+                    it.inBackend = true;
+                    it.month = best.onlineMonth || '';
+                    it.adapting = parseInt(best.adaptingCnt || '0', 10);
+                    it.apply = parseInt(best.selectedCnt || '0', 10);
                     hits++;
                     it.li.classList.add('sd-hit');
                     const tag = el('span', 'sd-tag');
@@ -517,8 +567,10 @@ function checkShortdramaBackend(items, containerId) {
         }
     };
     return Promise.all([worker(), worker(), worker()]).then(() => {
-        if (hits > 0) {
-            // 命中的书排到最前
+        if (fullSort) {
+            sortList(items, containerId, true);
+        } else if (hits > 0) {
+            // 仅入库书排最前(排行榜)
             const ul = $(containerId);
             const hit = items.filter((it) => it.li.classList.contains('sd-hit'));
             const rest = items.filter((it) => !it.li.classList.contains('sd-hit'));
