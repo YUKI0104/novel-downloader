@@ -12,7 +12,6 @@
         <div class="brand"><span class="brand-icon">📚</span>小说下载器</div>
         <nav class="tabs">
             <button class="tab active" data-tab="search">搜索下载</button>
-            <button class="tab" data-tab="rank">排行榜</button>
             <button class="tab" data-tab="adapt">改编书单</button>
             <button class="tab" data-tab="library">已下载</button>
             <button class="tab" data-tab="settings">设置</button>
@@ -20,49 +19,50 @@
     </header>
 
     <main>
-        <!-- 搜索下载 -->
+        <!-- 搜索下载(默认显示排行榜,搜索后切换为结果) -->
         <section id="tab-search" class="tab-panel active">
             <div class="search-bar">
                 <select id="platform" class="select">
+                    <option value="fanqie" selected>番茄小说</option>
                     <option value="qimao">七猫小说</option>
-                    <option value="fanqie">番茄小说</option>
                 </select>
                 <input id="keyword" class="input" placeholder="输入书名或关键词…"
                        autocomplete="off" spellcheck="false"/>
                 <button id="btn-search" class="btn primary">搜索</button>
             </div>
-            <div id="search-status" class="status"></div>
-            <ul id="results" class="results"></ul>
-        </section>
 
-        <!-- 排行榜 -->
-        <section id="tab-rank" class="tab-panel">
-            <div class="rank-nav">
-                <select id="rank-platform" class="rank-platform" title="选择榜单平台">
-                    <option value="fanqie" selected>综合热榜 · 番茄</option>
-                    <option value="qimao">综合热榜 · 七猫</option>
-                </select>
-                <button class="rank-gender hidden" data-gender="男频">男频</button>
-                <button class="rank-gender hidden" data-gender="女频">女频</button>
+            <!-- 默认视图:排行榜 -->
+            <div id="rank-default">
+                <div class="rank-row">
+                    <button class="rank-gender rank-channel active" data-channel="hot">综合热榜</button>
+                    <button class="rank-gender rank-channel" data-channel="男频">男频</button>
+                    <button class="rank-gender rank-channel" data-channel="女频">女频</button>
+                    <select id="rank-type" class="select rank-type-select"></select>
+                    <select id="rank-genre" class="select rank-genre-select hidden"></select>
+                </div>
+                <div id="rank-status" class="status"></div>
+                <ul id="rank-list" class="results"></ul>
             </div>
-            <div id="rank-type-row" class="rank-types hidden">
-                <button class="rank-type active" data-type="1">阅读榜</button>
-                <button class="rank-type" data-type="2">新书榜</button>
+
+            <!-- 搜索结果显示(搜索后切换) -->
+            <div id="search-results" class="hidden">
+                <div class="search-head">
+                    <span id="search-status" class="status"></span>
+                    <button id="btn-back-rank" class="btn ghost small">← 返回榜单</button>
+                </div>
+                <ul id="results" class="results"></ul>
             </div>
-            <div id="rank-genres" class="rank-genres"></div>
-            <div id="rank-status" class="status"></div>
-            <ul id="rank-list" class="results"></ul>
         </section>
 
         <!-- 改编书单 -->
         <section id="tab-adapt" class="tab-panel">
             <div class="adapt-filters">
-                <select id="af-direction" class="select"></select>
-                <select id="af-channel" class="select"></select>
-                <select id="af-category" class="select"></select>
-                <select id="af-words" class="select"></select>
-                <select id="af-over" class="select"></select>
-                <select id="af-ranking" class="select"></select>
+                <label class="af-field"><span>改编方向</span><select id="af-direction" class="select"></select></label>
+                <label class="af-field"><span>所属频道</span><select id="af-channel" class="select"></select></label>
+                <label class="af-field"><span>作品分类</span><select id="af-category" class="select"></select></label>
+                <label class="af-field"><span>作品字数</span><select id="af-words" class="select"></select></label>
+                <label class="af-field"><span>是否完结</span><select id="af-over" class="select"></select></label>
+                <label class="af-field"><span>热门书单</span><select id="af-ranking" class="select"></select></label>
             </div>
             <div id="af-status" class="status"></div>
             <ul id="af-list" class="results"></ul>
@@ -102,6 +102,21 @@
                 <div class="row">
                     <button id="btn-save-settings" class="btn primary">保存设置</button>
                 </div>
+            </div>
+
+            <!-- 短剧后台信息搜索 -->
+            <div class="settings-card sd-search">
+                <div class="field">
+                    <span>短剧后台搜索</span>
+                    <div class="row">
+                        <input id="sd-keyword" class="input grow" placeholder="输入书名或关键词,查询番茄短剧 IP…"
+                               autocomplete="off" spellcheck="false"/>
+                        <button id="btn-sd-search" class="btn primary">搜索</button>
+                    </div>
+                    <span class="hint">自动读取 Edge 登录态,调用短剧创作者中心后台</span>
+                </div>
+                <div id="sd-status" class="status"></div>
+                <ul id="sd-results" class="results"></ul>
             </div>
         </section>
     </main>

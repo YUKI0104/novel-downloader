@@ -120,7 +120,7 @@ input, textarea { user-select: text; }
     background-clip: padding-box;
 }
 
-#app { max-width: 880px; margin: 0 auto; padding: 0 28px 48px; }
+#app { max-width: 920px; margin: 0 auto; padding: 0 0 48px; }
 
 /* ---------------------------------------------------------------------------
    顶栏(毛玻璃工具栏)
@@ -133,7 +133,7 @@ input, textarea { user-select: text; }
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 16px 0 14px;
+    padding: 16px 20px 14px;
     background: var(--header-bg);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     backdrop-filter: saturate(180%) blur(20px);
@@ -167,6 +167,8 @@ input, textarea { user-select: text; }
     padding: 3px;
     background: var(--fill);
     border-radius: 9px;
+    flex-shrink: 0;   /* 不让标签被压缩/截断 */
+    overflow: hidden; /* 圆角裁剪,防溢出 */
 }
 .tab {
     border: none;
@@ -194,6 +196,13 @@ main { padding-top: 20px; }
    控件(输入 / 按钮 / 下拉)
    --------------------------------------------------------------------------- */
 .search-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+.search-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.search-head .status { margin: 0 0 10px; }
 
 .select, .input {
     border: 1px solid var(--separator-strong);
@@ -256,13 +265,28 @@ main { padding-top: 20px; }
 /* 改编书单 */
 .adapt-filters {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-wrap: nowrap;   /* 6 个筛选菜单同一行 */
+    gap: 8px;
     margin-bottom: 14px;
 }
 .adapt-filters .select {
-    min-width: 150px;
-    flex: 1 1 150px;
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 13px;
+    padding: 8px 10px;
+}
+.af-field {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.af-field > span {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
 }
 .adapt-pager {
     display: flex;
@@ -380,6 +404,27 @@ main { padding-top: 20px; }
     border-color: var(--accent);
     color: #fff;
     box-shadow: 0 1px 4px rgba(10, 132, 255, .35);
+}
+
+/* 排行榜导航:频道按钮 + 榜单名称/题材下拉同一行,下拉宽度自适应内容 */
+.rank-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: nowrap;
+}
+.rank-row .rank-gender {
+    flex-shrink: 0;
+    padding: 0 18px;
+    font-size: 13px;
+}
+.rank-row .select {
+    flex-shrink: 0;
+    width: auto;        /* 宽度按内容自适应,不拉长 */
+    height: 36px;       /* 与频道按钮等高 */
+    font-size: 13px;
+    padding: 0 10px;
 }
 
 .rank-types {

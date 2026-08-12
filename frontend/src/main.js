@@ -5,6 +5,7 @@ import {
     GetSettings, SetSettings,
     OpenFolder, PickDirectory, RemoveLibraryItem,
     RankingCategories, RankingBooks, QimaoRankBooks, QimaoAdaptConfig, QimaoAdaptBooks,
+    ShortdramaSearch,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -72,24 +73,34 @@ document.querySelectorAll('.tab').forEach((btn) => {
         btn.classList.add('active');
         $('tab-' + btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab === 'library') loadLibrary();
-        if (btn.dataset.tab === 'rank') initRank();
         if (btn.dataset.tab === 'adapt') initAdapt();
     });
 });
 
 // ---------------------------------------------------------------------------
-// 排行榜(平台下拉: 番茄/七猫; 番茄另有官网式 男频/女频 + 榜单标签导航)
+// 排行榜(整合进搜索页:平台共用顶部下拉,频道按钮 + 榜单名称 + 题材 一行)
 // ---------------------------------------------------------------------------
 let rankCatsLoaded = false;
 let rankGroups = [];
-let rankPlatform = 'fanqie'; // fanqie | qimao
-let rankGender = null;       // null=综合热榜 | '男频' | '女频'(仅番茄)
-let rankType = '1';          // 1=阅读榜 2=新书榜
-let rankGenreURL = null;     // 当前类型的 URL(阅读/新书)
+let rankChannel = 'hot';     // 'hot' 综合热榜 | '男频' | '女频'
+let rankType = '1';          // 番茄 榜单名称: 1=阅读榜 2=新书榜
+let rankGenreURL = null;     // 番茄 当前题材 URL
 let rankHotURL = '';
+let qimaoGender = '0';       // 七猫: 0=男生 1=女生
+let qimaoType = '1';         // 七猫 榜单名称: 1大热 2新书 3完结 4收藏 6更新
+
+const QIMAO_TYPES = [
+    {t: '1', name: '大热榜'},
+    {t: '2', name: '新书榜'},
+    {t: '3', name: '完结榜'},
+    {t: '4', name: '收藏榜'},
+    {t: '6', name: '更新榜'},
+];
+
+function curPlatform() { return $('platform').value; }
 
 async function initRank() {
-    if (rankPlatform === 'fanqie' && !rankCatsLoaded) {
+    if (curPlatform() === 'fanqie' && !rankCatsLoaded) {
         try {
             rankGroups = await RankingCategories();
             rankCatsLoaded = true;
@@ -101,66 +112,102 @@ async function initRank() {
             return;
         }
     }
-    switchPlatform(rankPlatform);
+    switchPlatform();
 }
 
-// 平台下拉切换: 番茄 → 官网式导航; 七猫 → 男生/女生 + 榜单类型
-function switchPlatform(p) {
-    rankPlatform = p;
-    $('rank-platform').value = p;
-    if (p === 'qimao') {
-        initQimao();
+// 平台下拉变化 → 重建榜单导航(频道标签/榜单名称选项)并回到综合热榜
+function switchPlatform() {
+    const isQimao = curPlatform() === 'qimao';
+    document.querySelectorAll('#rank-default .rank-channel').forEach((b) => {
+        if (b.dataset.channel === 'hot') b.textContent = '综合热榜';
+        else b.textContent = isQimao ? (b.dataset.channel === '男频' ? '男生' : '女生') : b.dataset.channel;
+    });
+    const rt = $('rank-type');
+    const defs = isQimao
+        ? QIMAO_TYPES
+        : [{t: '1', name: '阅读榜'}, {t: '2', name: '新书榜'}];
+    rt.innerHTML = '';
+    defs.forEach((d) => {
+        const op = document.createElement('option');
+        op.value = d.t;
+        op.textContent = d.name;
+        rt.appendChild(op);
+    });
+    selectChannel('hot');
+}
+
+// 频道切换: 综合热榜 / 男频 / 女频
+function selectChannel(ch) {
+    rankChannel = ch;
+    document.querySelectorAll('#rank-default .rank-channel').forEach((b) => {
+        b.classList.toggle('active', b.dataset.channel === ch);
+    });
+    const isQimao = curPlatform() === 'qimao';
+    if (isQimao) {
+        if (ch === 'hot') { qimaoGender = '0'; qimaoType = '1'; $('rank-type').value = '1'; }
+        else qimaoGender = ch === '女频' ? '1' : '0';
+        $('rank-genre').classList.add('hidden');
+        $('rank-type').classList.remove('hidden');
+        loadQimao();
         return;
     }
-    // 还原番茄性别按钮标签并显示
-    document.querySelectorAll('#tab-rank .rank-gender').forEach((b) => {
-        b.classList.remove('hidden');
-        b.textContent = b.dataset.gender;
-        b.classList.remove('active');
-    });
-    showHot();
+    if (ch === 'hot') {
+        $('rank-type').classList.add('hidden');
+        $('rank-genre').classList.add('hidden');
+        loadRank(rankHotURL);
+    } else {
+        $('rank-type').classList.remove('hidden');
+        setupFanqieGenres(ch);
+    }
 }
 
-// ---------- 七猫榜单 ----------
-const QIMAO_TYPES = [
-    {t: '1', name: '大热榜'},
-    {t: '2', name: '新书榜'},
-    {t: '3', name: '完结榜'},
-    {t: '4', name: '收藏榜'},
-    {t: '6', name: '更新榜'},
-];
-let qimaoGender = '0'; // 0=男生 1=女生
-let qimaoType = '1';
-
-function initQimao() {
-    // 性别按钮复用(男频→男生, 女频→女生)
-    document.querySelectorAll('#tab-rank .rank-gender').forEach((b) => {
-        b.classList.remove('hidden');
-        b.textContent = b.dataset.gender === '男频' ? '男生' : '女生';
-        b.classList.toggle('active', (b.dataset.gender === '男频') === (qimaoGender === '0'));
+// 番茄:填充题材下拉并加载第一个题材
+function setupFanqieGenres(ch) {
+    const sel = $('rank-genre');
+    sel.innerHTML = '';
+    sel.classList.remove('hidden');
+    const group = rankGroups.find((g) => g.gender === ch);
+    if (!group || !group.genres.length) {
+        loadRank('');
+        return;
+    }
+    group.genres.forEach((gen) => {
+        const op = document.createElement('option');
+        op.value = gen.readUrl;
+        op.dataset.readUrl = gen.readUrl;
+        op.dataset.newUrl = gen.newUrl;
+        op.textContent = gen.name;
+        sel.appendChild(op);
     });
-    $('rank-type-row').classList.add('hidden');
-    $('rank-genres').classList.remove('hidden');
-    renderQimaoTypes();
-    loadQimao();
+    const first = group.genres[0];
+    rankGenreURL = rankType === '1' ? first.readUrl : first.newUrl;
+    loadRank(rankGenreURL);
 }
 
-function renderQimaoTypes() {
-    const wrap = $('rank-genres');
-    wrap.innerHTML = '';
-    QIMAO_TYPES.forEach((d) => {
-        const c = el('button', 'chip genre-chip' + (d.t === qimaoType ? ' active' : ''), d.name);
-        c.dataset.rtype = d.t;
-        c.addEventListener('click', () => {
-            qimaoType = d.t;
-            wrap.querySelectorAll('.genre-chip').forEach((x) => x.classList.remove('active'));
-            c.classList.add('active');
-            loadQimao();
-        });
-        wrap.appendChild(c);
-    });
+// 榜单名称下拉变化
+function onRankTypeChange() {
+    if (curPlatform() === 'qimao') {
+        qimaoType = $('rank-type').value;
+        loadQimao();
+        return;
+    }
+    rankType = $('rank-type').value;
+    const gen = $('rank-genre').selectedOptions[0];
+    if (gen) {
+        rankGenreURL = rankType === '1' ? gen.dataset.readUrl : gen.dataset.newUrl;
+        loadRank(rankGenreURL);
+    }
 }
 
+// 题材下拉变化(番茄)
+function onRankGenreChange() {
+    const gen = $('rank-genre').selectedOptions[0];
+    if (!gen) return;
+    rankGenreURL = rankType === '1' ? gen.dataset.readUrl : gen.dataset.newUrl;
+    loadRank(rankGenreURL);
+}
+
+// 七猫:加载榜单
 async function loadQimao() {
     const ul = $('rank-list');
     ul.innerHTML = '';
@@ -205,55 +252,10 @@ async function loadQimao() {
     }
 }
 
-// 番茄综合热榜
-function showHot() {
-    rankGender = null;
-    document.querySelectorAll('.rank-gender').forEach((b) => b.classList.remove('active'));
-    $('rank-type-row').classList.add('hidden');
-    $('rank-genres').classList.add('hidden');
-    loadRank(rankHotURL);
-}
-
-function renderGenres() {
-    const wrap = $('rank-genres');
-    wrap.innerHTML = '';
-    const group = rankGroups.find((g) => g.gender === rankGender);
-    if (!group || !group.genres.length) return;
-    group.genres.forEach((gen) => {
-        const c = el('button', 'chip genre-chip', gen.name);
-        c.dataset.readUrl = gen.readUrl;
-        c.dataset.newUrl = gen.newUrl;
-        c.addEventListener('click', () => {
-            wrap.querySelectorAll('.genre-chip').forEach((x) => x.classList.remove('active'));
-            c.classList.add('active');
-            rankGenreURL = rankType === '1' ? gen.readUrl : gen.newUrl;
-            loadRank(rankGenreURL);
-        });
-        wrap.appendChild(c);
-    });
-}
-
-// 男频/女频: 显示阅读/新书切换 + 该性别类型标签
-function selectGender(gender) {
-    rankGender = gender;
-    document.querySelectorAll('.rank-gender').forEach((b) => {
-        b.classList.toggle('active', b.dataset.gender === gender);
-    });
-    $('rank-type-row').classList.remove('hidden');
-    $('rank-genres').classList.remove('hidden');
-    renderGenres();
-    const first = $('rank-genres')?.querySelector('.genre-chip');
-    if (first) {
-        first.classList.add('active');
-        rankGenreURL = rankType === '1' ? first.dataset.readUrl : first.dataset.newUrl;
-        loadRank(rankGenreURL);
-    }
-}
-
+// 番茄:加载榜单
 function rankLabel() {
-    if (rankPlatform === 'qimao') return '七猫';
-    if (!rankGender) return '综合热榜 · 番茄';
-    return `${rankGender}·${rankType === '1' ? '阅读' : '新书'}`;
+    if (rankChannel === 'hot') return '综合热榜 · 番茄';
+    return `${rankChannel}·${rankType === '1' ? '阅读' : '新书'}`;
 }
 
 async function loadRank(url) {
@@ -300,29 +302,15 @@ async function loadRank(url) {
     }
 }
 
-$('rank-platform').addEventListener('change', (e) => switchPlatform(e.target.value));
-document.querySelectorAll('#tab-rank .rank-gender').forEach((btn) => {
-    btn.addEventListener('click', () => {
-        if (rankPlatform === 'qimao') {
-            qimaoGender = btn.dataset.gender === '男频' ? '0' : '1';
-            document.querySelectorAll('#tab-rank .rank-gender').forEach((b) => b.classList.toggle('active', b === btn));
-            loadQimao();
-        } else {
-            selectGender(btn.dataset.gender);
-        }
-    });
+// 平台下拉共用:变化时同步刷新榜单(搜索时会临时切走榜单视图,不受影响)
+$('platform').addEventListener('change', () => {
+    if (!$('rank-default').classList.contains('hidden')) initRank();
 });
-document.querySelectorAll('.rank-type').forEach((btn) => {
-    btn.addEventListener('click', () => {
-        rankType = btn.dataset.type;
-        document.querySelectorAll('.rank-type').forEach((x) => x.classList.toggle('active', x === btn));
-        const active = $('rank-genres')?.querySelector('.genre-chip.active');
-        if (active) {
-            rankGenreURL = rankType === '1' ? active.dataset.readUrl : active.dataset.newUrl;
-            loadRank(rankGenreURL);
-        }
-    });
+document.querySelectorAll('#rank-default .rank-channel').forEach((btn) => {
+    btn.addEventListener('click', () => selectChannel(btn.dataset.channel));
 });
+$('rank-type').addEventListener('change', onRankTypeChange);
+$('rank-genre').addEventListener('change', onRankGenreChange);
 
 // ---------------------------------------------------------------------------
 // 搜索
@@ -330,6 +318,9 @@ document.querySelectorAll('.rank-type').forEach((btn) => {
 async function doSearch() {
     const kw = $('keyword').value.trim();
     if (!kw) return;
+    // 切换到搜索结果视图(隐藏默认的排行榜)
+    $('rank-default').classList.add('hidden');
+    $('search-results').classList.remove('hidden');
     const platform = $('platform').value;
     const btn = $('btn-search');
     btn.disabled = true;
@@ -402,6 +393,13 @@ async function enrichQimao(targets) {
 
 $('btn-search').addEventListener('click', doSearch);
 $('keyword').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+$('btn-back-rank').addEventListener('click', () => {
+    $('search-results').classList.add('hidden');
+    $('rank-default').classList.remove('hidden');
+    $('keyword').value = '';
+    setStatus('');
+    initRank();
+});
 
 // ---------------------------------------------------------------------------
 // 详情弹窗
@@ -716,7 +714,60 @@ $('btn-save-settings').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// 短剧后台信息搜索
+// ---------------------------------------------------------------------------
+async function doShortdramaSearch() {
+    const kw = $('sd-keyword').value.trim();
+    if (!kw) return;
+    const btn = $('btn-sd-search');
+    btn.disabled = true;
+    $('sd-status').textContent = '搜索中…';
+    $('sd-results').innerHTML = '';
+    try {
+        const items = await ShortdramaSearch(kw);
+        const ul = $('sd-results');
+        if (!items.length) {
+            ul.appendChild(el('li', 'empty', '没有找到相关 IP'));
+            $('sd-status').textContent = '';
+            return;
+        }
+        $('sd-status').textContent = `找到 ${items.length} 个 IP`;
+        items.forEach((it) => {
+            const li = el('li', 'result-item no-click');
+            if (it.coverUrl) {
+                const cover = el('div', 'card-cover');
+                const img = document.createElement('img');
+                img.src = it.coverUrl;
+                img.onerror = () => { cover.style.display = 'none'; };
+                cover.appendChild(img);
+                li.appendChild(cover);
+            }
+            const main = el('div', 'ri-main');
+            main.appendChild(el('div', 'ri-title', it.name));
+            const meta = el('div', 'ri-meta');
+            meta.appendChild(el('span', 'chip', it.gender || 'IP'));
+            if (it.author) meta.appendChild(el('span', '', it.author));
+            main.appendChild(meta);
+            const chips = el('div', 'ri-chips');
+            if (it.score && it.score !== '0') chips.appendChild(el('span', 'chip gold', `⭐ ${it.score}`));
+            if (it.words) chips.appendChild(el('span', 'chip', `📄 ${it.words}`));
+            main.appendChild(chips);
+            if (it.desc) main.appendChild(el('div', 'ri-abs', it.desc));
+            li.appendChild(main);
+            ul.appendChild(li);
+        });
+    } catch (e) {
+        $('sd-status').textContent = '搜索失败: ' + (e.message || e);
+    } finally {
+        btn.disabled = false;
+    }
+}
+$('btn-sd-search').addEventListener('click', doShortdramaSearch);
+$('sd-keyword').addEventListener('keydown', (e) => { if (e.key === 'Enter') doShortdramaSearch(); });
+
+// ---------------------------------------------------------------------------
 // 启动
 // ---------------------------------------------------------------------------
 loadSettings();
 loadLibrary();
+initRank();

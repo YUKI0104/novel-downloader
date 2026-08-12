@@ -224,6 +224,34 @@ export namespace main {
 	        this.fanqieBin = source["fanqieBin"];
 	    }
 	}
+	export class ShortdramaIP {
+	    ipBookId: string;
+	    name: string;
+	    author: string;
+	    score: string;
+	    desc: string;
+	    coverUrl: string;
+	    words: string;
+	    gender: string;
+	    adaptType: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ShortdramaIP(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ipBookId = source["ipBookId"];
+	        this.name = source["name"];
+	        this.author = source["author"];
+	        this.score = source["score"];
+	        this.desc = source["desc"];
+	        this.coverUrl = source["coverUrl"];
+	        this.words = source["words"];
+	        this.gender = source["gender"];
+	        this.adaptType = source["adaptType"];
+	    }
+	}
 
 }
 

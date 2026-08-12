@@ -2,7 +2,10 @@ module novel-downloader
 
 go 1.25.0
 
-require github.com/wailsapp/wails/v2 v2.14.0
+require (
+	github.com/wailsapp/wails/v2 v2.14.0
+	golang.org/x/crypto v0.53.0
+)
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
@@ -29,7 +32,6 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.39.0 // indirect

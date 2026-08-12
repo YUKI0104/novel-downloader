@@ -61,3 +61,7 @@ export function Search(arg1, arg2) {
 export function SetSettings(arg1) {
   return window['go']['main']['App']['SetSettings'](arg1);
 }
+
+export function ShortdramaSearch(arg1) {
+  return window['go']['main']['App']['ShortdramaSearch'](arg1);
+}
