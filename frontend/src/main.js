@@ -738,62 +738,8 @@ $('btn-save-settings').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// 短剧后台信息搜索
+// 短剧后台:番茄详情弹窗里自动查询,在简介与下载按钮之间显示 上架/申请/改编中
 // ---------------------------------------------------------------------------
-async function doShortdramaSearch() {
-    const kw = $('sd-keyword').value.trim();
-    if (!kw) return;
-    const btn = $('btn-sd-search');
-    btn.disabled = true;
-    $('sd-status').textContent = '搜索中…';
-    $('sd-results').innerHTML = '';
-    try {
-        const items = await ShortdramaSearch(kw);
-        const ul = $('sd-results');
-        if (!items.length) {
-            ul.appendChild(el('li', 'empty', '没有找到相关 IP'));
-            $('sd-status').textContent = '';
-            return;
-        }
-        $('sd-status').textContent = `找到 ${items.length} 个 IP`;
-        items.forEach((it) => {
-            const li = el('li', 'result-item no-click');
-            if (it.coverUrl) {
-                const cover = el('div', 'card-cover');
-                const img = document.createElement('img');
-                img.src = it.coverUrl;
-                img.onerror = () => { cover.style.display = 'none'; };
-                cover.appendChild(img);
-                li.appendChild(cover);
-            }
-            const main = el('div', 'ri-main');
-            main.appendChild(el('div', 'ri-title', it.name));
-            const meta = el('div', 'ri-meta');
-            meta.appendChild(el('span', 'chip', it.gender || 'IP'));
-            if (it.author) meta.appendChild(el('span', '', it.author));
-            main.appendChild(meta);
-            const chips = el('div', 'ri-chips');
-            if (it.score && it.score !== '0') chips.appendChild(el('span', 'chip gold', `⭐ ${it.score}`));
-            if (it.words) chips.appendChild(el('span', 'chip', `📄 ${it.words}`));
-            if (it.selectedCnt) chips.appendChild(el('span', 'chip', `👥 申请 ${it.selectedCnt}`));
-            if (it.adaptingCnt) chips.appendChild(el('span', 'chip', `🎬 改编中 ${it.adaptingCnt}`));
-            if (it.readingCnt) chips.appendChild(el('span', 'chip', `📖 在读 ${it.readingCnt}`));
-            if (it.onlineMonth) chips.appendChild(el('span', 'chip', `📅 ${it.onlineMonth}`));
-            main.appendChild(chips);
-            if (it.desc) main.appendChild(el('div', 'ri-abs', it.desc));
-            li.appendChild(main);
-            ul.appendChild(li);
-        });
-    } catch (e) {
-        $('sd-status').textContent = '搜索失败: ' + (e.message || e);
-    } finally {
-        btn.disabled = false;
-    }
-}
-$('btn-sd-search').addEventListener('click', doShortdramaSearch);
-$('sd-keyword').addEventListener('keydown', (e) => { if (e.key === 'Enter') doShortdramaSearch(); });
-
-// 番茄详情弹窗里自动查短剧后台,在简介与下载按钮之间显示 上架/申请/改编中
 async function loadShortdramaStrip(title) {
     const strip = $('m-sd-strip');
     try {
