@@ -781,22 +781,31 @@ async function loadSettings() {
     $('set-sd-enabled').checked = !s.shortdramaIgnored;   // 短剧IP开关 = 启用状态
 }
 
-// 点击文件夹名 → 弹出选择框
+// 点击文件夹名 → 弹出选择框 → 立即保存
 $('set-dir').addEventListener('click', async () => {
     const dir = await PickDirectory();
-    if (dir) $('set-dir').textContent = dir;
+    if (!dir) return;
+    $('set-dir').textContent = dir;
+    const s = await GetSettings();
+    s.downloadDir = dir;
+    await SetSettings(s);
+    toast('已保存下载目录', false, 'check');
 });
 
-$('btn-save-settings').addEventListener('click', async () => {
+// 保存格式 → 立即保存
+$('set-format').addEventListener('change', async () => {
     const s = await GetSettings();
-    s.downloadDir = $('set-dir').textContent.trim() || s.downloadDir;
     s.format = $('set-format').value;
     await SetSettings(s);
-    await SetShortdramaIgnored(!$('set-sd-enabled').checked);   // 开关控制短剧模式
-    $('settings-pop').classList.add('hidden');
-    toast('设置已保存', false, 'check');
-    loadLibrary();
-    // 刷新榜单导航(短剧功能关闭时隐藏七猫改编书单)
+    toast('已保存格式', false, 'check');
+});
+
+// 短剧模式开关 → 立即保存
+$('set-sd-enabled').addEventListener('change', async () => {
+    const on = $('set-sd-enabled').checked;
+    await SetShortdramaIgnored(!on);
+    toast(on ? '已开启短剧模式' : '已关闭短剧模式', false, on ? 'check' : '');
+    // 刷新榜单导航(关闭时隐藏七猫改编书单)
     if (!$('rank-default').classList.contains('hidden')) switchPlatform();
 });
 
@@ -817,6 +826,9 @@ async function loadShortdramaStrip(title) {
         $('sd-online').textContent = best.onlineMonth || '—';
         $('sd-apply').textContent = best.selectedCnt || '0';
         $('sd-adapting').textContent = best.adaptingCnt || '0';
+        // 申请/改编中 > 0 时红色高亮
+        $('sd-apply').closest('.sd-item').classList.toggle('sd-alert', parseInt(best.selectedCnt || '0', 10) > 0);
+        $('sd-adapting').closest('.sd-item').classList.toggle('sd-alert', parseInt(best.adaptingCnt || '0', 10) > 0);
         strip.classList.remove('hidden');
     } catch (e) {
         // 无浏览器登录态时提醒用户(其他错误静默)

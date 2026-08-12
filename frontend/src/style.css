@@ -727,6 +727,12 @@ main { padding-top: 20px; }
     white-space: nowrap;
 }
 .sd-item b { color: var(--text-secondary); font-weight: 500; }
+.sd-item.sd-alert {
+    background: var(--red-bg);
+    border-color: var(--red);
+    color: var(--red);
+}
+.sd-item.sd-alert b { color: var(--red); }
 
 .btn-inline-sym { width: 13px; height: 13px; vertical-align: -2px; margin-right: 5px; }
 .toast-sym { width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; }
