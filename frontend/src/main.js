@@ -751,6 +751,10 @@ async function doShortdramaSearch() {
             const chips = el('div', 'ri-chips');
             if (it.score && it.score !== '0') chips.appendChild(el('span', 'chip gold', `⭐ ${it.score}`));
             if (it.words) chips.appendChild(el('span', 'chip', `📄 ${it.words}`));
+            if (it.selectedCnt) chips.appendChild(el('span', 'chip', `👥 申请 ${it.selectedCnt}`));
+            if (it.adaptingCnt) chips.appendChild(el('span', 'chip', `🎬 改编中 ${it.adaptingCnt}`));
+            if (it.readingCnt) chips.appendChild(el('span', 'chip', `📖 在读 ${it.readingCnt}`));
+            if (it.onlineMonth) chips.appendChild(el('span', 'chip', `📅 ${it.onlineMonth}`));
             main.appendChild(chips);
             if (it.desc) main.appendChild(el('div', 'ri-abs', it.desc));
             li.appendChild(main);

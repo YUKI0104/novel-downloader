@@ -234,6 +234,10 @@ export namespace main {
 	    words: string;
 	    gender: string;
 	    adaptType: string;
+	    selectedCnt: string;
+	    adaptingCnt: string;
+	    readingCnt: string;
+	    onlineMonth: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ShortdramaIP(source);
@@ -250,6 +254,10 @@ export namespace main {
 	        this.words = source["words"];
 	        this.gender = source["gender"];
 	        this.adaptType = source["adaptType"];
+	        this.selectedCnt = source["selectedCnt"];
+	        this.adaptingCnt = source["adaptingCnt"];
+	        this.readingCnt = source["readingCnt"];
+	        this.onlineMonth = source["onlineMonth"];
 	    }
 	}
 

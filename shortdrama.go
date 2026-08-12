@@ -28,15 +28,19 @@ import (
 
 // ShortdramaIP 短剧后台 IP 搜索结果。
 type ShortdramaIP struct {
-	IPBookID string `json:"ipBookId"`
-	Name     string `json:"name"`
-	Author   string `json:"author"`
-	Score    string `json:"score"`
-	Desc     string `json:"desc"`
-	CoverURL string `json:"coverUrl"`
-	Words    string `json:"words"`
-	Gender   string `json:"gender"`
-	AdaptType string `json:"adaptType"`
+	IPBookID     string `json:"ipBookId"`
+	Name         string `json:"name"`
+	Author       string `json:"author"`
+	Score        string `json:"score"`
+	Desc         string `json:"desc"`
+	CoverURL     string `json:"coverUrl"`
+	Words        string `json:"words"`
+	Gender       string `json:"gender"`
+	AdaptType    string `json:"adaptType"`
+	SelectedCnt  string `json:"selectedCnt"`  // 申请人数/IP 被挑选次数
+	AdaptingCnt  string `json:"adaptingCnt"`  // 同 IP 改编中项目数
+	ReadingCnt   string `json:"readingCnt"`   // 人在读
+	OnlineMonth  string `json:"onlineMonth"`  // 上架时间(首月)
 }
 
 // edgeSessionID 从 Edge cookie 库解密 .shortdramas.com 的 sessionid。
@@ -138,9 +142,13 @@ func (a *App) ShortdramaSearch(keyword string) ([]ShortdramaIP, error) {
 			Score:    strOf(it["book_score"]),
 			Desc:     strOf(it["book_desc"]),
 			CoverURL: strOf(it["thumb_url"]),
-			Words:     qimao.FormatWords(intOf(it["word_num"])),
-			Gender:    ipGenderLabel(intOf(it["gender"])),
-			AdaptType: strconv.Itoa(intOf(it["ip_adaptation_type"])),
+			Words:       qimao.FormatWords(intOf(it["word_num"])),
+			Gender:      ipGenderLabel(intOf(it["gender"])),
+			AdaptType:   strconv.Itoa(intOf(it["ip_adaptation_type"])),
+			SelectedCnt: strconv.Itoa(intOf(it["ip_selected_count"])),
+			AdaptingCnt: strconv.Itoa(intOf(it["same_ip_adapting_count"])),
+			ReadingCnt:  strconv.Itoa(intOf(it["read_listen_dcnt_14d"])),
+			OnlineMonth: strOf(it["first_online_month"]),
 		})
 	}
 	return out, nil
