@@ -96,6 +96,31 @@ document.addEventListener('click', (e) => {
     }
 });
 
+
+// ---------------------------------------------------------------------------
+// 列表 / 相册 显示模式
+// ---------------------------------------------------------------------------
+let albumMode = localStorage.getItem('novelViewMode') === 'album';
+function applyViewMode() {
+    ['results', 'rank-list', 'af-list'].forEach((id) => {
+        const el = $(id);
+        if (el) el.classList.toggle('album', albumMode);
+    });
+    const grid = $('btn-view-toggle').querySelector('.view-grid');
+    const list = $('btn-view-toggle').querySelector('.view-list');
+    if (grid && list) {
+        grid.classList.toggle('hidden', albumMode);
+        list.classList.toggle('hidden', !albumMode);
+    }
+    $('btn-view-toggle').title = albumMode ? '切换为列表模式' : '切换为相册模式';
+}
+$('btn-view-toggle').addEventListener('click', () => {
+    albumMode = !albumMode;
+    localStorage.setItem('novelViewMode', albumMode ? 'album' : 'list');
+    applyViewMode();
+});
+applyViewMode();
+
 // ---------------------------------------------------------------------------
 // 排行榜(整合进搜索页:平台共用顶部下拉,频道按钮 + 榜单名称 + 题材 一行)
 // ---------------------------------------------------------------------------
