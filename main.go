@@ -15,7 +15,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:         "小说下载器",
+		Title:         "番茄猫下载器",
 		Width:         1100,
 		Height:        780,
 		DisableResize: true, // 固定窗口,不可放大/缩小
