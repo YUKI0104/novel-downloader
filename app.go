@@ -356,9 +356,28 @@ func (a *App) RankingBooks(rankURL string) ([]RankedBook, error) {
 	return out, nil
 }
 
-// QimaoAdaptBooks 七猫官方剧本改编书单(前20)。direction: "" 全部, "1" 动漫短剧, "2" 真人短剧。
-func (a *App) QimaoAdaptBooks(direction string) ([]RankedBook, error) {
-	books, err := a.qimao.AdaptBookList(direction)
+// AdaptPageResult 改编书单分页结果。
+type AdaptPageResult struct {
+	Books []RankedBook `json:"books"`
+	Total int          `json:"total"`
+	Page  int          `json:"page"`
+	Pages int          `json:"pages"`
+}
+
+const adaptPageSize = 20
+
+// QimaoAdaptConfig 返回官方改编书单的筛选菜单。
+func (a *App) QimaoAdaptConfig() ([]qimao.AdaptFilterGroup, error) {
+	return a.qimao.AdaptRankConfig()
+}
+
+// QimaoAdaptBooks 按官方筛选条件返回改编书单(分页)。
+func (a *App) QimaoAdaptBooks(direction, channel, category, words, isOver, rankingType string, page int) (*AdaptPageResult, error) {
+	books, total, err := a.qimao.AdaptBookList(qimao.AdaptFilter{
+		Direction: direction, Channel: channel, Category: category,
+		Words: words, IsOver: isOver, RankingType: rankingType,
+		Page: page, PageSize: adaptPageSize,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +393,11 @@ func (a *App) QimaoAdaptBooks(direction string) ([]RankedBook, error) {
 			CoverURL: b.CoverURL,
 		})
 	}
-	return out, nil
+	pages := 1
+	if total > 0 {
+		pages = (total + adaptPageSize - 1) / adaptPageSize
+	}
+	return &AdaptPageResult{Books: out, Total: total, Page: page, Pages: pages}, nil
 }
 
 // QimaoRankBooks 七猫榜单书籍(前20)。isGirl: 0=男生 1=女生; rankType: 1大热 2新书 3完结 4收藏 6更新。

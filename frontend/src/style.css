@@ -253,6 +253,26 @@ main { padding-top: 20px; }
 .status { min-height: 20px; margin: 6px 0 12px; color: var(--text-secondary); font-size: 13px; }
 .status.error { color: var(--red); }
 
+/* 改编书单 */
+.adapt-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.adapt-filters .select {
+    min-width: 150px;
+    flex: 1 1 150px;
+}
+.adapt-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 16px;
+}
+.adapt-pager .hint { min-width: 60px; text-align: center; }
+
 /* ---------------------------------------------------------------------------
    结果列表
    --------------------------------------------------------------------------- */

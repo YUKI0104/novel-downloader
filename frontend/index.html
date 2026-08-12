@@ -13,6 +13,7 @@
         <nav class="tabs">
             <button class="tab active" data-tab="search">搜索下载</button>
             <button class="tab" data-tab="rank">排行榜</button>
+            <button class="tab" data-tab="adapt">改编书单</button>
             <button class="tab" data-tab="library">已下载</button>
             <button class="tab" data-tab="settings">设置</button>
         </nav>
@@ -51,6 +52,25 @@
             <div id="rank-genres" class="rank-genres"></div>
             <div id="rank-status" class="status"></div>
             <ul id="rank-list" class="results"></ul>
+        </section>
+
+        <!-- 改编书单 -->
+        <section id="tab-adapt" class="tab-panel">
+            <div class="adapt-filters">
+                <select id="af-direction" class="select"></select>
+                <select id="af-channel" class="select"></select>
+                <select id="af-category" class="select"></select>
+                <select id="af-words" class="select"></select>
+                <select id="af-over" class="select"></select>
+                <select id="af-ranking" class="select"></select>
+            </div>
+            <div id="af-status" class="status"></div>
+            <ul id="af-list" class="results"></ul>
+            <div class="adapt-pager">
+                <button id="af-prev" class="btn ghost small">上一页</button>
+                <span id="af-pageinfo" class="hint"></span>
+                <button id="af-next" class="btn ghost small">下一页</button>
+            </div>
         </section>
 
         <!-- 已下载 -->

@@ -114,16 +114,27 @@ func TestE2E(t *testing.T) {
 	}
 	t.Logf("✅ 七猫·女生新书榜榜首: %s / %s", qf[0].Title, qf[0].Author)
 
-	// 七猫改编书单
-	adapts, err := a.QimaoAdaptBooks("")
+	// 七猫改编书单(筛选+分页)
+	cfg, err := a.QimaoAdaptConfig()
+	if err != nil {
+		t.Fatalf("qimao adapt config: %v", err)
+	}
+	t.Logf("✅ 改编书单筛选菜单: %d 组 (%v)", len(cfg), cfg[0].Key+"/"+cfg[0].Label)
+	adapts, err := a.QimaoAdaptBooks("", "", "", "", "", "", 1)
 	if err != nil {
 		t.Fatalf("qimao adapt: %v", err)
 	}
-	if len(adapts) == 0 {
+	if len(adapts.Books) == 0 {
 		t.Fatal("七猫改编书单为空")
 	}
-	t.Logf("✅ 七猫改编书单: %d 本, 榜首=#%d %s / %s / %s",
-		len(adapts), adapts[0].Position, adapts[0].Title, adapts[0].Author, adapts[0].Words)
+	t.Logf("✅ 七猫改编书单: 共 %d 本/%d 页, 榜首=#%d %s / %s / %s",
+		adapts.Total, adapts.Pages, adapts.Books[0].Position, adapts.Books[0].Title, adapts.Books[0].Author, adapts.Books[0].Words)
+	// 方向筛选(真人短剧)
+	filtered, err := a.QimaoAdaptBooks("2", "", "", "", "", "", 1)
+	if err != nil || len(filtered.Books) == 0 {
+		t.Fatalf("qimao adapt filter: %v", err)
+	}
+	t.Logf("✅ 改编书单·真人短剧: %d 本, 榜首=%s", len(filtered.Books), filtered.Books[0].Title)
 
 	// 设置往返
 	a.SetSettings(Settings{DownloadDir: t.TempDir(), Format: "epub"})

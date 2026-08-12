@@ -1,5 +1,69 @@
 export namespace main {
 	
+	export class RankedBook {
+	    position: number;
+	    platform: string;
+	    bookId: string;
+	    title: string;
+	    author: string;
+	    words: string;
+	    hot: string;
+	    score: string;
+	    coverUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RankedBook(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.position = source["position"];
+	        this.platform = source["platform"];
+	        this.bookId = source["bookId"];
+	        this.title = source["title"];
+	        this.author = source["author"];
+	        this.words = source["words"];
+	        this.hot = source["hot"];
+	        this.score = source["score"];
+	        this.coverUrl = source["coverUrl"];
+	    }
+	}
+	export class AdaptPageResult {
+	    books: RankedBook[];
+	    total: number;
+	    page: number;
+	    pages: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AdaptPageResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.books = this.convertValues(source["books"], RankedBook);
+	        this.total = source["total"];
+	        this.page = source["page"];
+	        this.pages = source["pages"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class BookInfo {
 	    platform: string;
 	    bookId: string;
@@ -113,34 +177,7 @@ export namespace main {
 		}
 	}
 	
-	export class RankedBook {
-	    position: number;
-	    platform: string;
-	    bookId: string;
-	    title: string;
-	    author: string;
-	    words: string;
-	    hot: string;
-	    score: string;
-	    coverUrl: string;
 	
-	    static createFrom(source: any = {}) {
-	        return new RankedBook(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.position = source["position"];
-	        this.platform = source["platform"];
-	        this.bookId = source["bookId"];
-	        this.title = source["title"];
-	        this.author = source["author"];
-	        this.words = source["words"];
-	        this.hot = source["hot"];
-	        this.score = source["score"];
-	        this.coverUrl = source["coverUrl"];
-	    }
-	}
 	export class SearchItem {
 	    platform: string;
 	    bookId: string;
@@ -186,6 +223,59 @@ export namespace main {
 	        this.format = source["format"];
 	        this.fanqieBin = source["fanqieBin"];
 	    }
+	}
+
+}
+
+export namespace qimao {
+	
+	export class AdaptOption {
+	    label: string;
+	    value: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AdaptOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.label = source["label"];
+	        this.value = source["value"];
+	    }
+	}
+	export class AdaptFilterGroup {
+	    key: string;
+	    label: string;
+	    options: AdaptOption[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AdaptFilterGroup(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.options = this.convertValues(source["options"], AdaptOption);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

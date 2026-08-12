@@ -4,7 +4,7 @@ import {
     Search, BookInfo, Download, Library,
     GetSettings, SetSettings,
     OpenFolder, PickDirectory, RemoveLibraryItem,
-    RankingCategories, RankingBooks, QimaoRankBooks, QimaoAdaptBooks,
+    RankingCategories, RankingBooks, QimaoRankBooks, QimaoAdaptConfig, QimaoAdaptBooks,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -73,6 +73,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
         $('tab-' + btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab === 'library') loadLibrary();
         if (btn.dataset.tab === 'rank') initRank();
+        if (btn.dataset.tab === 'adapt') initAdapt();
     });
 });
 
@@ -127,7 +128,6 @@ const QIMAO_TYPES = [
     {t: '3', name: '完结榜'},
     {t: '4', name: '收藏榜'},
     {t: '6', name: '更新榜'},
-    {t: 'adapt', name: '🎬 改编书单'},
 ];
 let qimaoGender = '0'; // 0=男生 1=女生
 let qimaoType = '1';
@@ -142,7 +142,6 @@ function initQimao() {
     $('rank-type-row').classList.add('hidden');
     $('rank-genres').classList.remove('hidden');
     renderQimaoTypes();
-    updateQimaoGenderVis();
     loadQimao();
 }
 
@@ -156,17 +155,9 @@ function renderQimaoTypes() {
             qimaoType = d.t;
             wrap.querySelectorAll('.genre-chip').forEach((x) => x.classList.remove('active'));
             c.classList.add('active');
-            updateQimaoGenderVis();
             loadQimao();
         });
         wrap.appendChild(c);
-    });
-}
-
-// 改编书单没有男/女生之分,隐藏性别按钮
-function updateQimaoGenderVis() {
-    document.querySelectorAll('#tab-rank .rank-gender').forEach((b) => {
-        b.classList.toggle('hidden', qimaoType === 'adapt');
     });
 }
 
@@ -175,9 +166,7 @@ async function loadQimao() {
     ul.innerHTML = '';
     $('rank-status').textContent = '加载榜单…';
     try {
-        const books = qimaoType === 'adapt'
-            ? await QimaoAdaptBooks('')
-            : await QimaoRankBooks(qimaoGender, qimaoType);
+        const books = await QimaoRankBooks(qimaoGender, qimaoType);
         ul.innerHTML = '';
         if (!books.length) {
             ul.appendChild(el('li', 'empty', '暂无数据'));
@@ -185,8 +174,7 @@ async function loadQimao() {
             return;
         }
         const tname = (QIMAO_TYPES.find((d) => d.t === qimaoType) || {}).name || '';
-        const label = qimaoType === 'adapt' ? tname : `${qimaoGender === '0' ? '男生' : '女生'}·${tname}`;
-        $('rank-status').textContent = `TOP ${books.length} · ${label}`;
+        $('rank-status').textContent = `TOP ${books.length} · ${qimaoGender === '0' ? '男生' : '女生'}·${tname}`;
         books.forEach((b) => {
             const li = el('li', 'result-item rank-item');
             li.appendChild(el('div', 'rank-no' + (b.position <= 3 ? ' top' : ''), String(b.position)));
@@ -606,6 +594,103 @@ $('btn-open-dir').addEventListener('click', async () => {
     const s = await GetSettings();
     OpenFolder(s.downloadDir);
 });
+
+// ---------------------------------------------------------------------------
+// 改编书单(官方筛选菜单 + 分页)
+// ---------------------------------------------------------------------------
+const ADAPT_PAGE_SIZE = 20;
+let adaptCfgLoaded = false;
+let adaptPage = 1;
+let adaptPages = 1;
+
+async function initAdapt() {
+    if (!adaptCfgLoaded) {
+        try {
+            const groups = await QimaoAdaptConfig();
+            const group = (key) => (groups.find((g) => g.key === key) || {options: []}).options;
+            fillSelect($('af-direction'), group('direction'));
+            fillSelect($('af-channel'), group('channel'));
+            fillSelect($('af-category'), group('category'));
+            fillSelect($('af-words'), group('words'));
+            fillSelect($('af-over'), group('is_over'));
+            fillSelect($('af-ranking'), group('ranking_type'));
+            adaptCfgLoaded = true;
+        } catch (e) {
+            $('af-status').textContent = '加载筛选菜单失败: ' + (e.message || e);
+            return;
+        }
+    }
+    adaptPage = 1;
+    loadAdapt();
+}
+
+function fillSelect(sel, options) {
+    sel.innerHTML = '';
+    options.forEach((o) => {
+        const op = document.createElement('option');
+        op.value = o.value;
+        op.textContent = o.label;
+        sel.appendChild(op);
+    });
+}
+
+async function loadAdapt() {
+    const ul = $('af-list');
+    ul.innerHTML = '';
+    $('af-status').textContent = '加载中…';
+    try {
+        const r = await QimaoAdaptBooks(
+            $('af-direction').value, $('af-channel').value,
+            $('af-category').value, $('af-words').value,
+            $('af-over').value, $('af-ranking').value,
+            adaptPage
+        );
+        ul.innerHTML = '';
+        adaptPages = Math.max(1, r.pages);
+        if (!r.books.length) {
+            ul.appendChild(el('li', 'empty', '暂无符合条件的书籍'));
+            $('af-status').textContent = '';
+        } else {
+            $('af-status').textContent = `共 ${r.total} 本 · 第 ${adaptPage}/${adaptPages} 页`;
+            r.books.forEach((b) => {
+                const li = el('li', 'result-item');
+                if (b.coverUrl) {
+                    const cover = el('div', 'card-cover');
+                    const img = document.createElement('img');
+                    img.src = b.coverUrl;
+                    img.onerror = () => { cover.style.display = 'none'; };
+                    cover.appendChild(img);
+                    li.appendChild(cover);
+                }
+                const main = el('div', 'ri-main');
+                main.appendChild(el('div', 'ri-title', b.title));
+                main.appendChild(el('div', 'ri-meta', b.author || ''));
+                const chips = el('div', 'ri-chips');
+                chips.appendChild(el('span', 'chip gold', '🎬 改编'));
+                if (b.words) chips.appendChild(el('span', 'chip', `📄 ${b.words}`));
+                main.appendChild(chips);
+                li.appendChild(main);
+                li.appendChild(el('div', 'ri-arrow', '›'));
+                li.addEventListener('click', () => showDetail('qimao', b.bookId, b.title));
+                ul.appendChild(li);
+            });
+        }
+        $('af-prev').disabled = adaptPage <= 1;
+        $('af-next').disabled = adaptPage >= adaptPages;
+        $('af-pageinfo').textContent = `${adaptPage} / ${adaptPages}`;
+    } catch (e) {
+        $('af-status').textContent = '加载失败: ' + (e.message || e);
+    }
+}
+
+['af-direction', 'af-channel', 'af-category', 'af-words', 'af-over', 'af-ranking'].forEach((id) => {
+    $(id).addEventListener('change', () => {
+        adaptPage = 1;
+        loadAdapt();
+    });
+});
+$('af-prev').addEventListener('click', () => { if (adaptPage > 1) { adaptPage--; loadAdapt(); } });
+$('af-next').addEventListener('click', () => { if (adaptPage < adaptPages) { adaptPage++; loadAdapt(); } });
 
 // ---------------------------------------------------------------------------
 // 设置

@@ -204,6 +204,31 @@ type AdaptBook struct {
 	ClientID int // 改编类型(如 1=漫剧/动漫, 3=短剧)
 }
 
+// AdaptOption 改编书单筛选选项。
+type AdaptOption struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
+// AdaptFilterGroup 一组筛选菜单(如「改编方向」「所属频道」)。
+type AdaptFilterGroup struct {
+	Key     string        `json:"key"`
+	Label   string        `json:"label"`
+	Options []AdaptOption `json:"options"`
+}
+
+// AdaptFilter 改编书单筛选条件(对应官方菜单)。
+type AdaptFilter struct {
+	Direction   string // 改编方向: ""全部 1动漫短剧 2真人短剧
+	Channel     string // 频道: ""全部 0男生 1女生 2短故事
+	Category    string // 分类: ""全部
+	Words       string // 字数: ""全部 1~5
+	IsOver      string // 完结: ""全部 1已完结 0连载中
+	RankingType string // 热门书单: ""全部 1~6
+	Page        int
+	PageSize    int
+}
+
 type Book struct {
 	BookID     string
 	Title      string
@@ -429,22 +454,14 @@ func (c *Client) RankingBooks(isGirl, rankType string) ([]RankBook, error) {
 // 官方「剧本改编书单」(作者中心 API)
 // ---------------------------------------------------------------------------
 
-const qimaoAdaptAPI = "https://zuozhe.qimao.com/api/pc/v1/book/screenplay-ranking-list"
+const (
+	qimaoAdaptAPI    = "https://zuozhe.qimao.com/api/pc/v1/book/screenplay-ranking-list"
+	qimaoAdaptCfgAPI = "https://zuozhe.qimao.com/api/pc/v1/book/screenplay-ranking-config"
+)
 
-// AdaptBookList 返回七猫官方剧本改编书单(前20本)。
-// direction: "" 全部, "1" 动漫短剧, "2" 真人短剧。
-func (c *Client) AdaptBookList(direction string) ([]AdaptBook, error) {
-	params := url.Values{}
-	params.Set("direction", direction)
-	params.Set("channel", "")
-	params.Set("category", "")
-	params.Set("words", "")
-	params.Set("is_over", "")
-	params.Set("ranking_type", "")
-	params.Set("date_type", "1")
-	params.Set("page_size", "20")
-	params.Set("page", "1")
-	req, err := http.NewRequest(http.MethodGet, qimaoAdaptAPI+"?"+params.Encode(), nil)
+// adaptFetch 带作者中心 UA/Referer 的 GET 请求。
+func (c *Client) adaptFetch(rawURL string) (map[string]interface{}, error) {
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -457,18 +474,64 @@ func (c *Client) AdaptBookList(direction string) ([]AdaptBook, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("改编书单 HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("改编接口 HTTP %d", resp.StatusCode)
 	}
-	var payload struct {
-		Data struct {
-			BookList []map[string]interface{} `json:"book_list"`
-		} `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	var data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, err
 	}
-	books := make([]AdaptBook, 0, len(payload.Data.BookList))
-	for _, it := range payload.Data.BookList {
+	return data, nil
+}
+
+// AdaptRankConfig 返回官方改编书单的筛选菜单(方向/频道/分类/字数/完结/热门书单)。
+func (c *Client) AdaptRankConfig() ([]AdaptFilterGroup, error) {
+	data, err := c.adaptFetch(qimaoAdaptCfgAPI)
+	if err != nil {
+		return nil, err
+	}
+	raw, _ := data["data"].([]interface{})
+	groups := make([]AdaptFilterGroup, 0, len(raw))
+	for _, item := range raw {
+		m, _ := item.(map[string]interface{})
+		g := AdaptFilterGroup{Key: strOf(m["key"]), Label: strOf(m["label"])}
+		if opts, ok := m["options"].([]interface{}); ok {
+			for _, o := range opts {
+				om, _ := o.(map[string]interface{})
+				g.Options = append(g.Options, AdaptOption{Label: strOf(om["label"]), Value: strOf(om["value"])})
+			}
+		}
+		groups = append(groups, g)
+	}
+	return groups, nil
+}
+
+// AdaptBookList 按筛选条件返回改编书单(分页)。返回书籍列表与总数。
+func (c *Client) AdaptBookList(f AdaptFilter) ([]AdaptBook, int, error) {
+	if f.PageSize <= 0 {
+		f.PageSize = 20
+	}
+	if f.Page <= 0 {
+		f.Page = 1
+	}
+	params := url.Values{}
+	params.Set("direction", f.Direction)
+	params.Set("channel", f.Channel)
+	params.Set("category", f.Category)
+	params.Set("words", f.Words)
+	params.Set("is_over", f.IsOver)
+	params.Set("ranking_type", f.RankingType)
+	params.Set("date_type", "1")
+	params.Set("page_size", strconv.Itoa(f.PageSize))
+	params.Set("page", strconv.Itoa(f.Page))
+	data, err := c.adaptFetch(qimaoAdaptAPI + "?" + params.Encode())
+	if err != nil {
+		return nil, 0, err
+	}
+	dm, _ := data["data"].(map[string]interface{})
+	raw, _ := dm["book_list"].([]interface{})
+	books := make([]AdaptBook, 0, len(raw))
+	for _, item := range raw {
+		it, _ := item.(map[string]interface{})
 		id := strconv.FormatInt(int64(intOf(it["book_id"])), 10)
 		if id == "0" {
 			continue
@@ -485,7 +548,11 @@ func (c *Client) AdaptBookList(direction string) ([]AdaptBook, error) {
 			ClientID: intOf(it["client_id"]),
 		})
 	}
-	return books, nil
+	total := 0
+	if pd, ok := dm["page_data"].(map[string]interface{}); ok {
+		total = intOf(pd["count"])
+	}
+	return books, total, nil
 }
 
 // wordsText 从 words_num 结构 {number,value,unit,title} 拼 "4.6万字"。
