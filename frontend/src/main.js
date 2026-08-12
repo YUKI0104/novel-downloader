@@ -458,6 +458,14 @@ function resetModal() {
     $('m-cover').removeAttribute('src');
 }
 
+// SF Symbol 图标 span(mask + currentColor)
+function symSpan(name) {
+    const s = el('span', 'sym sym-' + name);
+    s.style.width = '12px';
+    s.style.height = '12px';
+    return s;
+}
+
 // 封面按弹窗内容高度取 3:4 比例(实测七猫/番茄封面均为 3:4),直接写死尺寸,防拉伸裁切。
 function sizeCover() {
     const cover = $('m-cover').parentElement;
@@ -484,15 +492,17 @@ async function showDetail(platform, bookId, fallbackTitle) {
         const stats = $('m-stats');
         stats.innerHTML = '';
         const statItems = [
-            info.score ? ['⭐', info.score] : null,
-            info.words ? ['📄', info.words] : null,
-            info.hot ? ['👥', info.hot] : null,
-            info.rank ? ['🏆', info.rank] : null,
-            info.category ? ['🗂', info.category] : null,
-            info.characters ? ['🧑', '主角: ' + info.characters] : null,
-        ].filter(Boolean);
-        statItems.forEach(([icon, text]) => {
-            const c = el('span', 'chip stat', `${icon} ${text}`);
+            [info.score ? 'star' : null, info.score],
+            [info.words ? 'doc' : null, info.words],
+            [info.hot ? 'person2' : null, info.hot],
+            [info.rank ? 'trophy' : null, info.rank],
+            [info.category ? 'folder' : null, info.category],
+            [info.characters ? 'person' : null, '主角: ' + info.characters],
+        ].filter(([k]) => k);
+        statItems.forEach(([s, text]) => {
+            const c = el('span', 'chip stat');
+            c.appendChild(symSpan(s));
+            c.appendChild(document.createTextNode(' ' + text));
             stats.appendChild(c);
         });
         if (info.coverUrl) {
