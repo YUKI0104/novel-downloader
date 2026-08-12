@@ -125,7 +125,7 @@ go test -run TestE2E -v   # 无 GUI 的逻辑链路测试(会真连七猫/番茄
 2. 因仅自签名,首次打开需右键 →「打开」,或执行 `xattr -cr 番茄猫下载器.app`。
 3. 若要完全规避提示,需要 Apple 开发者账号做签名 + 公证(notarytool)。
 
-> 内置番茄内核为 arm64;分发到 Intel Mac 需用 `GOARCH=amd64` 重新构建内核并打包。
+> App 与番茄内核均为 **通用二进制**(arm64 + x86_64),Intel 和 Apple Silicon 都能直接运行。
 
 ## 🗄 数据目录
 
