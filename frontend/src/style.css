@@ -477,8 +477,11 @@ main { padding-top: 20px; }
 }
 .cover {
     flex-shrink: 0;
-    width: 200px;
-    height: 280px;
+    width: auto;
+    min-width: 210px;
+    min-height: 280px;
+    align-self: stretch;          /* 高度延伸到内容区底部(标题→下载按钮) */
+    aspect-ratio: 3 / 4;          /* 书封面 3:4,宽度随高度按比例放大,不再截断 */
     border-radius: 14px;
     background: var(--fill);
     overflow: hidden;
@@ -505,10 +508,15 @@ main { padding-top: 20px; }
 }
 .m-stats { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; }
 .chip.stat { font-size: 12.5px; padding: 3px 10px; }
-.m-actions { display: flex; align-items: center; gap: 12px; }
-.hint { color: var(--text-secondary); font-size: 13px; }
+.m-actions { display: flex; align-items: center; gap: 14px; }
+.hint { color: var(--text-secondary); font-size: 13px; flex-shrink: 0; }
 
-.progress-wrap { margin-top: 16px; }
+/* 进度条:在下载按钮右侧同一行,占剩余宽度 */
+.progress-wrap {
+    flex: 1;
+    min-width: 140px;
+    margin-top: 0;
+}
 .progress {
     height: 6px;
     background: var(--fill);
@@ -522,7 +530,7 @@ main { padding-top: 20px; }
     border-radius: 3px;
     transition: width .25s;
 }
-.progress-text { margin-top: 6px; font-size: 13px; color: var(--text-secondary); }
+.progress-text { margin-top: 5px; font-size: 12px; color: var(--text-secondary); }
 
 .m-result {
     margin-top: 16px;
