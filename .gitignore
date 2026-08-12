@@ -1,6 +1,9 @@
-# Wails 构建产物(保留 appicon.png)
+# Wails 构建产物(保留源文件:图标 + darwin plist 模板)
 build/*
 !build/appicon.png
+!build/darwin/
+!build/darwin/Info.plist
+!build/darwin/Info.dev.plist
 
 # 依赖
 node_modules/
@@ -10,3 +13,4 @@ frontend/dist/
 
 # macOS
 .DS_Store
+build/darwin/icon.icns

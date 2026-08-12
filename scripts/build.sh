@@ -6,7 +6,7 @@ export PATH="/opt/homebrew/bin:$PATH:$HOME/go/bin"
 
 wails build
 
-APP="build/bin/NovelDownloader.app/Contents/Resources"
+APP="build/bin/番茄猫下载器.app/Contents/Resources"
 # 内核来源: 环境变量 TOMATO_BIN > ~/bin > 上一版包内
 SRC="${TOMATO_BIN:-$HOME/bin/Tomato-Novel-Downloader}"
 if [ ! -f "$SRC" ]; then
@@ -19,4 +19,4 @@ fi
 cp "$SRC" "$APP/"
 chmod +x "$APP/Tomato-Novel-Downloader"
 echo "✅ 已打包番茄内核: $SRC"
-du -sh build/bin/NovelDownloader.app
+du -sh build/bin/番茄猫下载器.app

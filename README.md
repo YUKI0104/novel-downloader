@@ -73,8 +73,8 @@
 
 ## 🚀 快速上手
 
-1. **下载**:从 [Releases](https://github.com/YUKI0104/novel-downloader/releases) 获取 `NovelDownloader.dmg`(macOS arm64)。
-2. **安装**:打开 DMG,把 App 拖入「应用程序」。因未签名,首次打开请右键 →「打开」,或执行 `xattr -cr /Applications/NovelDownloader.app`。
+1. **下载**:从 [Releases](https://github.com/YUKI0104/novel-downloader/releases) 获取 `番茄猫下载器.dmg`(macOS arm64)。
+2. **安装**:打开 DMG,把 App 拖入「应用程序」。因未签名,首次打开请右键 →「打开」,或执行 `xattr -cr /Applications/番茄猫下载器.app`。
 3. **下载小说**:在搜索页搜书名 → 点开详情 → 下载。默认存到 `~/Downloads`;顶部「📂 下载」按钮管理已下载文件。
 4. **短剧 IP**(可选):首次进入会询问是否启用。启用后需先在 **Chrome / Edge / Brave / Vivaldi / Opera** 任一浏览器登录 `www.shortdramas.com`(番茄短剧创作者中心),本软件会自动检测并读取该登录态。
 
@@ -97,7 +97,7 @@ novel-downloader-wails/
 │   ├── index.html
 │   └── src/main.js, style.css
 ├── scripts/build.sh   # 构建脚本(打包番茄内核)
-└── build/             # 构建产物(build/bin/NovelDownloader.app)
+└── build/             # 构建产物(build/bin/番茄猫下载器.app)
 ```
 
 ## 🔨 构建
@@ -110,7 +110,7 @@ cd novel-downloader-wails
 ./scripts/build.sh
 ```
 
-产物:`build/bin/NovelDownloader.app`(约 17 MB,自包含番茄内核)。
+产物:`build/bin/番茄猫下载器.app`(约 17 MB,自包含番茄内核)。
 
 ## 🧪 开发 / 测试
 
@@ -121,8 +121,8 @@ go test -run TestE2E -v   # 无 GUI 的逻辑链路测试(会真连七猫/番茄
 
 ## 📦 分发给他人
 
-1. 打包 `NovelDownloader.app`(macOS arm64)。
-2. 因仅自签名,首次打开需右键 →「打开」,或执行 `xattr -cr NovelDownloader.app`。
+1. 打包 `番茄猫下载器.app`(macOS arm64)。
+2. 因仅自签名,首次打开需右键 →「打开」,或执行 `xattr -cr 番茄猫下载器.app`。
 3. 若要完全规避提示,需要 Apple 开发者账号做签名 + 公证(notarytool)。
 
 > 内置番茄内核为 arm64;分发到 Intel Mac 需用 `GOARCH=amd64` 重新构建内核并打包。
