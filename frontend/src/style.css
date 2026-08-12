@@ -373,6 +373,7 @@ main { padding-top: 20px; }
    --------------------------------------------------------------------------- */
 .results { list-style: none; }
 .result-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -440,6 +441,29 @@ main { padding-top: 20px; }
     font-variant-numeric: tabular-nums;
 }
 .rank-no.top { color: var(--orange); }
+/* 短剧后台命中: 红色高亮 + 角标 */
+.result-item.sd-hit {
+    border-color: var(--red);
+    box-shadow: 0 0 0 1px var(--red), 0 4px 14px rgba(255, 59, 48, .14);
+}
+.sd-tag {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--red);
+    color: #fff;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(255, 59, 48, .35);
+}
+.sd-tag .sym { width: 11px; height: 11px; }
+
 
 /* ---------------------------------------------------------------------------
    排行榜导航

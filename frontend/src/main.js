@@ -402,6 +402,7 @@ async function doSearch() {
         }
         setStatus(`共 ${items.length} 条结果 · 点击查看详情`);
         const enrichTargets = [];
+        const sdChecks = [];   // 番茄: 待查短剧后台的书
         items.forEach((it) => {
             const li = el('li', 'result-item book-card');
             // 封面缩略图
@@ -432,9 +433,14 @@ async function doSearch() {
             li.addEventListener('click', () => showDetail(platform, it.bookId, it.title));
             ul.appendChild(li);
             if (platform === 'qimao') enrichTargets.push({bookId: it.bookId, chips});
+            if (platform === 'fanqie') sdChecks.push({title: it.title, li});
         });
         // 七猫后台补全人气/榜单(搜索结果不含,需查详情)
         if (enrichTargets.length) enrichQimao(enrichTargets);
+        // 番茄: 自动检查是否在短剧后台,在则红色高亮
+        if (sdChecks.length) {
+            try { if (!(await GetSettings()).shortdramaIgnored) checkShortdramaBackend(sdChecks); } catch (e) {}
+        }
     } catch (e) {
         setStatus('搜索失败: ' + (e.message || e), true);
     } finally {
@@ -456,6 +462,30 @@ async function enrichQimao(targets) {
         }
     };
     await Promise.all([worker(), worker(), worker()]);
+}
+
+// 番茄搜索结果: 自动查短剧后台,命中则红色高亮 + 短剧角标
+function checkShortdramaBackend(items) {
+    let idx = 0;
+    const worker = async () => {
+        while (idx < items.length) {
+            const it = items[idx++];
+            try {
+                const r = await ShortdramaSearch(it.title);
+                if (r.length > 0) {
+                    it.li.classList.add('sd-hit');
+                    const tag = el('span', 'sd-tag');
+                    const s = symSpan('film');
+                    s.style.width = '11px';
+                    s.style.height = '11px';
+                    tag.appendChild(s);
+                    tag.appendChild(document.createTextNode('短剧'));
+                    it.li.appendChild(tag);
+                }
+            } catch (e) { /* 无会话等错误静默 */ }
+        }
+    };
+    return Promise.all([worker(), worker(), worker()]);
 }
 
 $('btn-search').addEventListener('click', doSearch);
