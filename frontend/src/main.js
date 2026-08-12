@@ -36,9 +36,18 @@ function setStatus(msg, isError) {
 
 // 全局 toast 提示(右下角浮现)
 let toastTimer = null;
-function toast(msg, isError) {
+function toast(msg, isError, icon) {
     const t = $('toast');
-    t.textContent = msg;
+    t.innerHTML = '';
+    if (icon) {
+        const s = symSpan(icon);
+        s.style.width = '14px';
+        s.style.height = '14px';
+        t.appendChild(s);
+        t.appendChild(document.createTextNode(' ' + msg));
+    } else {
+        t.textContent = msg;
+    }
     t.className = 'toast' + (isError ? ' error' : '');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { t.className = 'toast hidden'; }, 2400);
@@ -135,7 +144,7 @@ async function switchPlatform() {
     document.querySelectorAll('#rank-default .rank-channel').forEach((b) => {
         if (b.dataset.channel === 'adapt') {
             b.classList.toggle('hidden', !canAdapt);
-            b.textContent = '🎬 改编书单';
+            b.innerHTML = '<span class=\'sym sym-film btn-inline-sym\'></span>改编书单';
         } else if (b.dataset.channel === 'hot') {
             b.textContent = '综合热榜';
         } else {
@@ -270,9 +279,9 @@ async function loadQimao() {
             main.appendChild(el('div', 'ri-title', b.title));
             main.appendChild(el('div', 'ri-meta', b.author || ''));
             const chips = el('div', 'ri-chips');
-            if (b.score) chips.appendChild(el('span', 'chip gold', `⭐ ${b.score}`));
-            if (b.words) chips.appendChild(el('span', 'chip', `📄 ${b.words}`));
-            if (b.hot) chips.appendChild(el('span', 'chip', `👥 ${b.hot}`));
+            if (b.score) chips.appendChild(chipSym('gold', 'star', b.score));
+            if (b.words) chips.appendChild(chipSym('', 'doc', b.words));
+            if (b.hot) chips.appendChild(chipSym('', 'person2', b.hot));
             main.appendChild(chips);
             li.appendChild(main);
             li.appendChild(el('div', 'ri-arrow', '›'));
@@ -320,9 +329,9 @@ async function loadRank(url) {
             main.appendChild(el('div', 'ri-title', b.title));
             main.appendChild(el('div', 'ri-meta', b.author || ''));
             const chips = el('div', 'ri-chips');
-            if (b.score) chips.appendChild(el('span', 'chip gold', `⭐ ${b.score}`));
-            if (b.words) chips.appendChild(el('span', 'chip', `📄 ${b.words}`));
-            if (b.hot) chips.appendChild(el('span', 'chip', `👥 ${b.hot}`));
+            if (b.score) chips.appendChild(chipSym('gold', 'star', b.score));
+            if (b.words) chips.appendChild(chipSym('', 'doc', b.words));
+            if (b.hot) chips.appendChild(chipSym('', 'person2', b.hot));
             main.appendChild(chips);
             li.appendChild(main);
             li.appendChild(el('div', 'ri-arrow', '›'));
@@ -357,7 +366,7 @@ async function doSearch() {
     const platform = $('platform').value;
     const btn = $('btn-search');
     btn.disabled = true;
-    setStatus(`🔍 正在搜索「${kw}」…`);
+    setStatusSym('search', `正在搜索「${kw}」…`);
     try {
         const items = await Search(platform, kw);
         const ul = $('results');
@@ -388,9 +397,9 @@ async function doSearch() {
             main.appendChild(meta);
             // 信息徽章
             const chips = el('div', 'ri-chips');
-            if (it.score) chips.appendChild(el('span', 'chip gold', `⭐ ${it.score}`));
-            if (it.words) chips.appendChild(el('span', 'chip', `📄 ${it.words}`));
-            if (it.hot) chips.appendChild(el('span', 'chip', `👥 ${it.hot}`));
+            if (it.score) chips.appendChild(chipSym('gold', 'star', it.score));
+            if (it.words) chips.appendChild(chipSym('', 'doc', it.words));
+            if (it.hot) chips.appendChild(chipSym('', 'person2', it.hot));
             main.appendChild(chips);
             if (it.abstract) main.appendChild(el('div', 'ri-abs', it.abstract));
             li.appendChild(main);
@@ -416,8 +425,8 @@ async function enrichQimao(targets) {
             const t = targets[idx++];
             try {
                 const info = await BookInfo('qimao', t.bookId);
-                if (info.hot) t.chips.appendChild(el('span', 'chip', `👥 ${info.hot}`));
-                if (info.rank) t.chips.appendChild(el('span', 'chip', `🏆 ${info.rank}`));
+                if (info.hot) t.chips.appendChild(chipSym('', 'person2', info.hot));
+                if (info.rank) t.chips.appendChild(chipSym('', 'trophy', info.rank));
             } catch (e) { /* 单个失败静默 */ }
         }
     };
@@ -464,6 +473,29 @@ function symSpan(name) {
     s.style.width = '12px';
     s.style.height = '12px';
     return s;
+}
+
+
+// 带图标的 chip
+function chipSym(cls, sym, text) {
+    const c = el('span', 'chip' + (cls ? ' ' + cls : ''));
+    const s = symSpan(sym);
+    s.style.width = '11px';
+    s.style.height = '11px';
+    c.appendChild(s);
+    c.appendChild(document.createTextNode(' ' + text));
+    return c;
+}
+// 带图标的 status
+function setStatusSym(sym, msg, isError) {
+    const s = $('search-status');
+    s.innerHTML = '';
+    const icon = symSpan(sym);
+    icon.style.width = '13px';
+    icon.style.height = '13px';
+    s.appendChild(icon);
+    s.appendChild(document.createTextNode(' ' + msg));
+    s.className = 'status' + (isError ? ' error' : '');
 }
 
 // 封面按弹窗内容高度取 3:4 比例(实测七猫/番茄封面均为 3:4),直接写死尺寸,防拉伸裁切。
@@ -547,7 +579,7 @@ EventsOn('download:done', (r) => {
     downloading = false;
     $('m-download').disabled = false;
     $('m-progress-bar').style.width = '100%';
-    $('m-progress-text').textContent = '✅ 下载完成';
+    $('m-progress-text').innerHTML = '<span class=\'sym sym-check btn-inline-sym\'></span>下载完成';
     const res = $('m-result');
     res.classList.remove('hidden');
     res.classList.remove('error');
@@ -713,8 +745,8 @@ async function loadAdapt() {
                 main.appendChild(el('div', 'ri-title', b.title));
                 main.appendChild(el('div', 'ri-meta', b.author || ''));
                 const chips = el('div', 'ri-chips');
-                chips.appendChild(el('span', 'chip gold', '🎬 改编'));
-                if (b.words) chips.appendChild(el('span', 'chip', `📄 ${b.words}`));
+                chips.appendChild(chipSym('gold', 'film', '改编'));
+                if (b.words) chips.appendChild(chipSym('', 'doc', b.words));
                 main.appendChild(chips);
                 li.appendChild(main);
                 li.appendChild(el('div', 'ri-arrow', '›'));
@@ -762,7 +794,7 @@ $('btn-save-settings').addEventListener('click', async () => {
     await SetSettings(s);
     await SetShortdramaIgnored(!$('set-sd-enabled').checked);   // 开关控制短剧IP查询
     $('settings-pop').classList.add('hidden');
-    toast('✅ 设置已保存');
+    toast('设置已保存', false, 'check');
     loadLibrary();
     // 刷新榜单导航(短剧功能关闭时隐藏七猫改编书单)
     if (!$('rank-default').classList.contains('hidden')) switchPlatform();
@@ -822,7 +854,7 @@ $('btn-sd-enable').addEventListener('click', async () => {
         $('sd-first-backdrop').classList.add('hidden');
         // 检查本地浏览器登录态,给用户反馈
         const ok = await ShortdramaSessionStatus();
-        toast(ok ? '✅ 已启用,检测到浏览器登录态' : '已启用;未检测到浏览器登录态,打开番茄详情时会提示登录', !ok);
+        toast(ok ? '已启用,检测到浏览器登录态' : '已启用;未检测到浏览器登录态,打开番茄详情时会提示登录', !ok, 'check');
     } catch (e) {
         toast('操作失败: ' + (e.message || e), true);
     }
