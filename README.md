@@ -68,7 +68,7 @@ go test -run TestE2E -v   # 无 GUI 的逻辑链路测试(会真连七猫/番茄
 - 设置:`~/Library/Application Support/novel-downloader/settings.json`
 - 下载记录:`~/Library/Application Support/novel-downloader/downloads.json`
 - 番茄服务配置:`~/Library/Caches/tomato-novel-downloader/config.yml`
-- 默认下载目录:`~/Downloads/NovelDownloader`
+- 默认下载目录:`~/Downloads`(直接下载到「下载」文件夹)
 
 ## 🔧 技术备注
 
