@@ -339,6 +339,7 @@ async function loadRank(url) {
             return;
         }
         $('rank-status').textContent = `TOP ${books.length} · ${rankLabel()}`;
+        const rankChecks = [];
         books.forEach((b) => {
             const li = el('li', 'result-item rank-item');
             li.appendChild(el('div', 'rank-no' + (b.position <= 3 ? ' top' : ''), String(b.position)));
@@ -362,8 +363,16 @@ async function loadRank(url) {
             li.appendChild(el('div', 'ri-arrow', '›'));
             li.addEventListener('click', () => showDetail('fanqie', b.bookId, b.title));
             ul.appendChild(li);
+            rankChecks.push({title: b.title, li});
         });
-        $('rank-status').textContent = '';
+        // 番茄榜单: 自动查短剧后台,命中高亮并排最前
+        if (rankChecks.length) {
+            try { if (!(await GetSettings()).shortdramaIgnored) {
+                checkShortdramaBackend(rankChecks, 'rank-list').then((hits) => {
+                    if (hits > 0) $('rank-status').textContent = `TOP ${books.length} · ${rankLabel()} · ${hits} 本在短剧后台`;
+                });
+            }} catch (e) {}
+        }
     } catch (e) {
         $('rank-status').textContent = '加载榜单失败: ' + (e.message || e);
     }
@@ -437,9 +446,13 @@ async function doSearch() {
         });
         // 七猫后台补全人气/榜单(搜索结果不含,需查详情)
         if (enrichTargets.length) enrichQimao(enrichTargets);
-        // 番茄: 自动检查是否在短剧后台,在则红色高亮
+        // 番茄: 自动检查是否在短剧后台,在则红色高亮 + 排最前
         if (sdChecks.length) {
-            try { if (!(await GetSettings()).shortdramaIgnored) checkShortdramaBackend(sdChecks); } catch (e) {}
+            try { if (!(await GetSettings()).shortdramaIgnored) {
+                checkShortdramaBackend(sdChecks, 'results').then((hits) => {
+                    if (hits > 0) setStatus(`共 ${items.length} 条结果 · ${hits} 本在短剧后台`);
+                });
+            }} catch (e) {}
         }
     } catch (e) {
         setStatus('搜索失败: ' + (e.message || e), true);
@@ -464,8 +477,8 @@ async function enrichQimao(targets) {
     await Promise.all([worker(), worker(), worker()]);
 }
 
-// 番茄搜索结果: 自动查短剧后台,命中则红色高亮 + 短剧角标
-function checkShortdramaBackend(items) {
+// 番茄列表: 自动查短剧后台,命中则红色高亮 + 短剧角标 + 排最前
+function checkShortdramaBackend(items, containerId) {
     let idx = 0;
     let hits = 0;
     const worker = async () => {
@@ -489,15 +502,15 @@ function checkShortdramaBackend(items) {
     };
     return Promise.all([worker(), worker(), worker()]).then(() => {
         if (hits > 0) {
-            setStatus(`共 ${items.length} 条结果 · ${hits} 本在短剧后台`);
             // 命中的书排到最前
-            const ul = $('results');
+            const ul = $(containerId);
             const hit = items.filter((it) => it.li.classList.contains('sd-hit'));
             const rest = items.filter((it) => !it.li.classList.contains('sd-hit'));
             ul.innerHTML = '';
             hit.forEach((it) => ul.appendChild(it.li));
             rest.forEach((it) => ul.appendChild(it.li));
         }
+        return hits;
     });
 }
 
