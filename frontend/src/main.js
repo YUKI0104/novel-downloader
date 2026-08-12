@@ -467,12 +467,14 @@ async function enrichQimao(targets) {
 // 番茄搜索结果: 自动查短剧后台,命中则红色高亮 + 短剧角标
 function checkShortdramaBackend(items) {
     let idx = 0;
+    let hits = 0;
     const worker = async () => {
         while (idx < items.length) {
             const it = items[idx++];
             try {
                 const r = await ShortdramaSearch(it.title);
                 if (r.length > 0) {
+                    hits++;
                     it.li.classList.add('sd-hit');
                     const tag = el('span', 'sd-tag');
                     const s = symSpan('film');
@@ -485,7 +487,18 @@ function checkShortdramaBackend(items) {
             } catch (e) { /* 无会话等错误静默 */ }
         }
     };
-    return Promise.all([worker(), worker(), worker()]);
+    return Promise.all([worker(), worker(), worker()]).then(() => {
+        if (hits > 0) {
+            setStatus(`共 ${items.length} 条结果 · ${hits} 本在短剧后台`);
+            // 命中的书排到最前
+            const ul = $('results');
+            const hit = items.filter((it) => it.li.classList.contains('sd-hit'));
+            const rest = items.filter((it) => !it.li.classList.contains('sd-hit'));
+            ul.innerHTML = '';
+            hit.forEach((it) => ul.appendChild(it.li));
+            rest.forEach((it) => ul.appendChild(it.li));
+        }
+    });
 }
 
 $('btn-search').addEventListener('click', doSearch);
