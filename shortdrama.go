@@ -43,17 +43,49 @@ type ShortdramaIP struct {
 	OnlineMonth  string `json:"onlineMonth"`  // 上架时间(首月)
 }
 
-// edgeSessionID 从 Edge cookie 库解密 .shortdramas.com 的 sessionid。
+// browserSpec 浏览器登录态来源(keychain 密钥服务名 + cookie 库路径)。
+// Chromium 系浏览器(Chrome/Edge/Brave/Vivaldi/Opera)加密格式一致。
+type browserSpec struct {
+	name       string
+	keyService string
+	cookiePath string
+}
+
+var browserSpecs = []browserSpec{
+	{"Chrome", "Chrome Safe Storage", "~/Library/Application Support/Google/Chrome/Default/Cookies"},
+	{"Edge", "Microsoft Edge Safe Storage", "~/Library/Application Support/Microsoft Edge/Default/Cookies"},
+	{"Brave", "Brave Safe Storage", "~/Library/Application Support/BraveSoftware/Brave-Browser/Default/Cookies"},
+	{"Vivaldi", "Vivaldi Safe Storage", "~/Library/Application Support/Vivaldi/Default/Cookies"},
+	{"Opera", "Opera Safe Storage", "~/Library/Application Support/com.operasoftware.Opera/Default/Cookies"},
+}
+
+// shortdramaSessionID 依次尝试各 Chromium 浏览器,取 .shortdramas.com 的 sessionid。
 // 算法与 browser_cookie3 一致:keychain 密钥 → PBKDF2(saltysalt,1003)
 // → AES-128-CBC(iv=16空格) → 库版本>=24 时去掉前 32 字节完整性前缀。
-func edgeSessionID() (string, error) {
-	key, err := exec.Command("security", "-q", "find-generic-password", "-w", "-s", "Microsoft Edge Safe Storage").Output()
+func shortdramaSessionID() (string, error) {
+	var errs []string
+	for _, b := range browserSpecs {
+		if sid, err := sessionFromBrowser(b); err == nil && sid != "" {
+			return sid, nil
+		} else if err != nil {
+			errs = append(errs, b.name+": "+err.Error())
+		}
+	}
+	if len(errs) == 0 {
+		errs = append(errs, "所有浏览器均未找到会话")
+	}
+	return "", errors.New(strings.Join(errs, "; "))
+}
+
+func sessionFromBrowser(b browserSpec) (string, error) {
+	home := os.Getenv("HOME")
+	key, err := exec.Command("security", "-q", "find-generic-password", "-w", "-s", b.keyService).Output()
 	if err != nil {
-		return "", fmt.Errorf("读取 Edge 登录密钥失败: %v", err)
+		return "", fmt.Errorf("读取 %s 密钥失败", b.name)
 	}
 	dk := pbkdf2.Key(bytes.TrimSpace(key), []byte("saltysalt"), 1003, 16, sha1.New)
 
-	db := filepath.Join(os.Getenv("HOME"), "Library", "Application Support", "Microsoft Edge", "Default", "Cookies")
+	db := expandHome(home, b.cookiePath)
 	needStrip := false
 	if v, err := exec.Command("sqlite3", db, "SELECT value FROM meta WHERE key='version'").Output(); err == nil {
 		if n, convErr := strconv.Atoi(strings.TrimSpace(string(v))); convErr == nil && n >= 24 {
@@ -63,7 +95,7 @@ func edgeSessionID() (string, error) {
 	hexVal, err := exec.Command("sqlite3", db,
 		"SELECT hex(encrypted_value) FROM cookies WHERE host_key='.shortdramas.com' AND name='sessionid' LIMIT 1").Output()
 	if err != nil {
-		return "", fmt.Errorf("读取 Edge cookie 失败: %v", err)
+		return "", fmt.Errorf("%s 无该 cookie", b.name)
 	}
 	raw, err := hex.DecodeString(strings.TrimSpace(string(hexVal)))
 	if err != nil {
@@ -89,16 +121,19 @@ func edgeSessionID() (string, error) {
 	if needStrip && len(plain) >= 32 {
 		plain = plain[32:]
 	}
-	sid := string(plain)
-	if sid == "" {
-		return "", errors.New("未在 Edge 找到 shortdramas 登录态,请先在 Edge 中登录并访问过该网站")
+	return string(plain), nil
+}
+
+func expandHome(home, p string) string {
+	if strings.HasPrefix(p, "~/") {
+		return filepath.Join(home, p[2:])
 	}
-	return sid, nil
+	return p
 }
 
 // ShortdramaSearch 按书名搜索短剧后台的 IP(前20条)。
 func (a *App) ShortdramaSearch(keyword string) ([]ShortdramaIP, error) {
-	sid, err := edgeSessionID()
+	sid, err := shortdramaSessionID()
 	if err != nil {
 		return nil, err
 	}
