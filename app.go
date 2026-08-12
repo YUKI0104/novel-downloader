@@ -169,7 +169,9 @@ func resolveFanqieBin(configured string) string {
 
 func (a *App) initClients() {
 	a.qimao = qimao.NewClient()
-	a.fanqie = fanqie.NewClient(resolveFanqieBin(a.settings.FanqieBin), "", a.settings.DownloadDir)
+	// 内核 save_path 用应用私有目录:避免每次预览书都把封面/临时目录写进用户下载文件夹
+	kernelDir := filepath.Join(appSupportDir(), "downloads")
+	a.fanqie = fanqie.NewClient(resolveFanqieBin(a.settings.FanqieBin), "", kernelDir)
 }
 
 // ---------------------------------------------------------------------------
