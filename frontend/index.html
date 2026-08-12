@@ -12,7 +12,6 @@
         <div class="brand"><span class="brand-icon">📚</span>小说下载器</div>
         <nav class="tabs">
             <button class="tab active" data-tab="search">搜索下载</button>
-            <button class="tab" data-tab="adapt">改编书单</button>
             <button class="tab" data-tab="library">已下载</button>
             <button class="tab" data-tab="settings">设置</button>
         </nav>
@@ -35,13 +34,33 @@
             <div id="rank-default">
                 <div class="rank-row">
                     <button class="rank-gender rank-channel active" data-channel="hot">综合热榜</button>
+                    <button class="rank-gender rank-channel hidden" data-channel="adapt">🎬 改编书单</button>
                     <button class="rank-gender rank-channel" data-channel="男频">男频</button>
                     <button class="rank-gender rank-channel" data-channel="女频">女频</button>
                     <select id="rank-type" class="select rank-type-select"></select>
                     <select id="rank-genre" class="select rank-genre-select hidden"></select>
                 </div>
-                <div id="rank-status" class="status"></div>
-                <ul id="rank-list" class="results"></ul>
+                <div id="rank-body">
+                    <div id="rank-status" class="status"></div>
+                    <ul id="rank-list" class="results"></ul>
+                </div>
+                <div id="adapt-body" class="hidden">
+                    <div class="adapt-filters">
+                        <label class="af-field"><span>改编方向</span><select id="af-direction" class="select"></select></label>
+                        <label class="af-field"><span>所属频道</span><select id="af-channel" class="select"></select></label>
+                        <label class="af-field"><span>作品分类</span><select id="af-category" class="select"></select></label>
+                        <label class="af-field"><span>作品字数</span><select id="af-words" class="select"></select></label>
+                        <label class="af-field"><span>是否完结</span><select id="af-over" class="select"></select></label>
+                        <label class="af-field"><span>热门书单</span><select id="af-ranking" class="select"></select></label>
+                    </div>
+                    <div id="af-status" class="status"></div>
+                    <ul id="af-list" class="results"></ul>
+                    <div class="adapt-pager">
+                        <button id="af-prev" class="btn ghost small">上一页</button>
+                        <span id="af-pageinfo" class="hint"></span>
+                        <button id="af-next" class="btn ghost small">下一页</button>
+                    </div>
+                </div>
             </div>
 
             <!-- 搜索结果显示(搜索后切换) -->
@@ -51,25 +70,6 @@
                     <button id="btn-back-rank" class="btn ghost small">← 返回榜单</button>
                 </div>
                 <ul id="results" class="results"></ul>
-            </div>
-        </section>
-
-        <!-- 改编书单 -->
-        <section id="tab-adapt" class="tab-panel">
-            <div class="adapt-filters">
-                <label class="af-field"><span>改编方向</span><select id="af-direction" class="select"></select></label>
-                <label class="af-field"><span>所属频道</span><select id="af-channel" class="select"></select></label>
-                <label class="af-field"><span>作品分类</span><select id="af-category" class="select"></select></label>
-                <label class="af-field"><span>作品字数</span><select id="af-words" class="select"></select></label>
-                <label class="af-field"><span>是否完结</span><select id="af-over" class="select"></select></label>
-                <label class="af-field"><span>热门书单</span><select id="af-ranking" class="select"></select></label>
-            </div>
-            <div id="af-status" class="status"></div>
-            <ul id="af-list" class="results"></ul>
-            <div class="adapt-pager">
-                <button id="af-prev" class="btn ghost small">上一页</button>
-                <span id="af-pageinfo" class="hint"></span>
-                <button id="af-next" class="btn ghost small">下一页</button>
             </div>
         </section>
 

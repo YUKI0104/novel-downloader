@@ -73,7 +73,6 @@ document.querySelectorAll('.tab').forEach((btn) => {
         btn.classList.add('active');
         $('tab-' + btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab === 'library') loadLibrary();
-        if (btn.dataset.tab === 'adapt') initAdapt();
     });
 });
 
@@ -118,10 +117,19 @@ async function initRank() {
 // 平台下拉变化 → 重建榜单导航(频道标签/榜单名称选项)并回到综合热榜
 function switchPlatform() {
     const isQimao = curPlatform() === 'qimao';
+    // 改编书单频道仅七猫显示
     document.querySelectorAll('#rank-default .rank-channel').forEach((b) => {
-        if (b.dataset.channel === 'hot') b.textContent = '综合热榜';
-        else b.textContent = isQimao ? (b.dataset.channel === '男频' ? '男生' : '女生') : b.dataset.channel;
+        if (b.dataset.channel === 'adapt') {
+            b.classList.toggle('hidden', !isQimao);
+            b.textContent = '🎬 改编书单';
+        } else if (b.dataset.channel === 'hot') {
+            b.textContent = '综合热榜';
+        } else {
+            b.textContent = isQimao ? (b.dataset.channel === '男频' ? '男生' : '女生') : b.dataset.channel;
+        }
     });
+    // 平台切到番茄时,若当前在改编书单频道则回综合热榜
+    if (rankChannel === 'adapt' && !isQimao) rankChannel = 'hot';
     const rt = $('rank-type');
     const defs = isQimao
         ? QIMAO_TYPES
@@ -133,15 +141,26 @@ function switchPlatform() {
         op.textContent = d.name;
         rt.appendChild(op);
     });
-    selectChannel('hot');
+    selectChannel(rankChannel === 'adapt' && isQimao ? 'adapt' : 'hot');
 }
 
-// 频道切换: 综合热榜 / 男频 / 女频
+// 频道切换: 综合热榜 / 男频(男生) / 女频(女生) / 改编书单(仅七猫)
 function selectChannel(ch) {
     rankChannel = ch;
     document.querySelectorAll('#rank-default .rank-channel').forEach((b) => {
         b.classList.toggle('active', b.dataset.channel === ch);
     });
+    // 改编书单:显示筛选+列表,隐藏常规榜单
+    if (ch === 'adapt') {
+        $('rank-type').classList.add('hidden');
+        $('rank-genre').classList.add('hidden');
+        $('rank-body').classList.add('hidden');
+        $('adapt-body').classList.remove('hidden');
+        initAdapt();
+        return;
+    }
+    $('adapt-body').classList.add('hidden');
+    $('rank-body').classList.remove('hidden');
     const isQimao = curPlatform() === 'qimao';
     if (isQimao) {
         if (ch === 'hot') { qimaoGender = '0'; qimaoType = '1'; $('rank-type').value = '1'; }
