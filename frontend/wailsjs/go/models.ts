@@ -212,6 +212,7 @@ export namespace main {
 	    downloadDir: string;
 	    format: string;
 	    fanqieBin: string;
+	    shortdramaIgnored: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -222,6 +223,7 @@ export namespace main {
 	        this.downloadDir = source["downloadDir"];
 	        this.format = source["format"];
 	        this.fanqieBin = source["fanqieBin"];
+	        this.shortdramaIgnored = source["shortdramaIgnored"];
 	    }
 	}
 	export class ShortdramaIP {

@@ -5,7 +5,7 @@ import {
     GetSettings, SetSettings,
     OpenFolder, PickDirectory, RemoveLibraryItem,
     RankingCategories, RankingBooks, QimaoRankBooks, QimaoAdaptConfig, QimaoAdaptBooks,
-    ShortdramaSearch,
+    ShortdramaSearch, SetShortdramaIgnored,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -744,6 +744,10 @@ $('btn-save-settings').addEventListener('click', async () => {
 async function loadShortdramaStrip(title) {
     const strip = $('m-sd-strip');
     const hint = $('m-sd-hint');
+    // 用户已忽略短剧数据功能,不再尝试
+    try {
+        if ((await GetSettings()).shortdramaIgnored) return;
+    } catch (e) { return; }
     try {
         const items = await ShortdramaSearch(title);
         const best = items[0];
@@ -759,6 +763,17 @@ async function loadShortdramaStrip(title) {
         }
     }
 }
+
+// 忽略短剧后台数据功能(持久化,之后不再显示)
+$('btn-sd-ignore').addEventListener('click', async () => {
+    try {
+        await SetShortdramaIgnored(true);
+        $('m-sd-hint').classList.add('hidden');
+        toast('已忽略短剧IP数据');
+    } catch (e) {
+        toast('操作失败: ' + (e.message || e), true);
+    }
+});
 
 // ---------------------------------------------------------------------------
 // 启动

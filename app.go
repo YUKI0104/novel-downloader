@@ -18,9 +18,10 @@ import (
 
 // Settings 应用设置。
 type Settings struct {
-	DownloadDir string `json:"downloadDir"` // 下载目录
-	Format      string `json:"format"`      // txt | epub
-	FanqieBin   string `json:"fanqieBin"`   // Rust binary 路径(空=自动查找 ~/bin)
+	DownloadDir       string `json:"downloadDir"`       // 下载目录
+	Format            string `json:"format"`            // txt | epub
+	FanqieBin         string `json:"fanqieBin"`         // Rust binary 路径(空=自动查找 ~/bin)
+	ShortdramaIgnored bool   `json:"shortdramaIgnored"` // 用户已忽略短剧后台数据功能
 }
 
 func (s Settings) withDefaults() Settings {
@@ -219,6 +220,14 @@ func (a *App) SetSettings(s Settings) {
 	a.settings = s.withDefaults()
 	a.saveSettings()
 	a.initClients()
+}
+
+// SetShortdramaIgnored 设置是否忽略短剧后台数据功能(忽略后不再显示)。
+func (a *App) SetShortdramaIgnored(ignored bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.settings.ShortdramaIgnored = ignored
+	a.saveSettings()
 }
 
 // DefaultSettings 返回默认设置。
