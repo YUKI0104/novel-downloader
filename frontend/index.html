@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>小说下载器</title>
+    <link rel="stylesheet" href="./src/style.css"/>
+</head>
+<body>
+<div id="app">
+    <header class="app-header">
+        <div class="brand"><span class="brand-icon">📚</span>小说下载器</div>
+        <nav class="tabs">
+            <button class="tab active" data-tab="search">搜索下载</button>
+            <button class="tab" data-tab="rank">排行榜</button>
+            <button class="tab" data-tab="library">已下载</button>
+            <button class="tab" data-tab="settings">设置</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 搜索下载 -->
+        <section id="tab-search" class="tab-panel active">
+            <div class="search-bar">
+                <select id="platform" class="select">
+                    <option value="qimao">七猫小说</option>
+                    <option value="fanqie">番茄小说</option>
+                </select>
+                <input id="keyword" class="input" placeholder="输入书名或关键词…"
+                       autocomplete="off" spellcheck="false"/>
+                <button id="btn-search" class="btn primary">搜索</button>
+            </div>
+            <div id="search-status" class="status"></div>
+            <ul id="results" class="results"></ul>
+        </section>
+
+        <!-- 排行榜 -->
+        <section id="tab-rank" class="tab-panel">
+            <div class="rank-nav">
+                <select id="rank-platform" class="rank-platform" title="选择榜单平台">
+                    <option value="fanqie" selected>综合热榜 · 番茄</option>
+                    <option value="qimao">综合热榜 · 七猫</option>
+                </select>
+                <button class="rank-gender hidden" data-gender="男频">男频</button>
+                <button class="rank-gender hidden" data-gender="女频">女频</button>
+            </div>
+            <div id="rank-type-row" class="rank-types hidden">
+                <button class="rank-type active" data-type="1">阅读榜</button>
+                <button class="rank-type" data-type="2">新书榜</button>
+            </div>
+            <div id="rank-genres" class="rank-genres"></div>
+            <div id="rank-status" class="status"></div>
+            <ul id="rank-list" class="results"></ul>
+        </section>
+
+        <!-- 已下载 -->
+        <section id="tab-library" class="tab-panel">
+            <div class="search-bar">
+                <button id="btn-refresh-lib" class="btn ghost">刷新</button>
+                <button id="btn-open-dir" class="btn ghost">打开下载目录</button>
+            </div>
+            <ul id="lib-list" class="results"></ul>
+        </section>
+
+        <!-- 设置 -->
+        <section id="tab-settings" class="tab-panel">
+            <div class="settings-card">
+                <label class="field">
+                    <span>下载目录</span>
+                    <div class="row">
+                        <input id="set-dir" class="input grow" type="text"/>
+                        <button id="btn-pick-dir" class="btn ghost">选择…</button>
+                    </div>
+                </label>
+                <label class="field">
+                    <span>保存格式</span>
+                    <select id="set-format" class="select">
+                        <option value="txt">TXT（默认）</option>
+                        <option value="epub">EPUB</option>
+                    </select>
+                </label>
+                <div class="row">
+                    <button id="btn-save-settings" class="btn primary">保存设置</button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- 书籍详情弹窗 -->
+<div id="modal-backdrop" class="modal-backdrop hidden">
+    <div class="modal" role="dialog" aria-modal="true">
+        <button id="modal-close" class="modal-close" title="关闭">✕</button>
+        <div class="modal-body">
+            <div class="cover">
+                <img id="m-cover" alt="封面" onerror="this.style.visibility='hidden'"/>
+            </div>
+            <div class="m-info">
+                <div class="m-title-row">
+                    <h2 id="m-title"></h2>
+                    <span id="m-platform" class="chip"></span>
+                </div>
+                <div class="meta">
+                    <span id="m-author"></span>
+                    <span id="m-tags"></span>
+                </div>
+                <div id="m-stats" class="m-stats"></div>
+                <div id="m-desc" class="desc"></div>
+                <div class="m-actions">
+                    <button id="m-download" class="btn primary big">下载</button>
+                    <span id="m-chapters" class="hint"></span>
+                </div>
+                <div id="m-progress-wrap" class="progress-wrap hidden">
+                    <div class="progress"><div id="m-progress-bar" class="progress-bar"></div></div>
+                    <div id="m-progress-text" class="progress-text">准备中…</div>
+                </div>
+                <div id="m-result" class="m-result hidden">
+                    <span id="m-result-text"></span>
+                    <button id="m-reveal" class="btn ghost small">在 Finder 中显示</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认弹窗 -->
+<div id="confirm-backdrop" class="modal-backdrop hidden">
+    <div class="confirm" role="dialog" aria-modal="true">
+        <h3 id="cf-title">删除确认</h3>
+        <p id="cf-text" class="cf-text"></p>
+        <div class="cf-actions">
+            <button id="cf-record" class="btn ghost">仅移除记录</button>
+            <button id="cf-file" class="btn danger">同时删除文件</button>
+            <button id="cf-cancel" class="btn ghost">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 全局提示 -->
+<div id="toast" class="toast hidden"></div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

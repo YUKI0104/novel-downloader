@@ -1,0 +1,12 @@
+# Wails 构建产物(保留 appicon.png)
+build/*
+!build/appicon.png
+
+# 依赖
+node_modules/
+
+# 前端产物
+frontend/dist/
+
+# macOS
+.DS_Store
