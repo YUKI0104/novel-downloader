@@ -12,7 +12,40 @@
         <div class="brand"><span class="brand-icon">📚</span>小说下载器</div>
         <div class="header-actions">
             <button id="btn-open-library" class="btn ghost">📂 下载</button>
-            <button id="btn-open-settings" class="btn ghost">⚙️ 设置</button>
+            <div class="settings-wrap">
+                <button id="btn-open-settings" class="btn ghost">⚙️ 设置</button>
+                <div id="settings-pop" class="settings-pop hidden">
+                    <div class="set-group">
+                        <div class="set-row">
+                            <span class="set-label">下载目录</span>
+                            <div class="set-field">
+                                <button id="set-dir" class="set-path" title="点击选择文件夹">~/Downloads</button>
+                            </div>
+                        </div>
+                        <div class="set-row">
+                            <span class="set-label">保存格式</span>
+                            <div class="set-field">
+                                <select id="set-format" class="select">
+                                    <option value="txt">TXT</option>
+                                    <option value="epub">EPUB</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="set-row">
+                            <span class="set-label">短剧IP查询</span>
+                            <div class="set-field">
+                                <label class="switch">
+                                    <input type="checkbox" id="set-sd-enabled"/>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="set-save">
+                        <button id="btn-save-settings" class="btn primary">保存设置</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -85,45 +118,6 @@
                 <button id="btn-open-dir" class="btn ghost">打开下载目录</button>
             </div>
             <ul id="lib-list" class="results"></ul>
-        </div>
-    </div>
-</div>
-
-<!-- 设置弹窗 -->
-<div id="settings-backdrop" class="modal-backdrop hidden">
-    <div class="modal modal-panel">
-        <button class="modal-close" id="settings-close" title="关闭">✕</button>
-        <div class="panel-body">
-            <div class="panel-title">⚙️ 设置</div>
-            <div class="settings-card">
-                <label class="field">
-                    <span>下载目录</span>
-                    <div class="row">
-                        <input id="set-dir" class="input grow" type="text"/>
-                        <button id="btn-pick-dir" class="btn ghost">选择…</button>
-                    </div>
-                </label>
-                <label class="field">
-                    <span>保存格式</span>
-                    <select id="set-format" class="select">
-                        <option value="txt">TXT（默认）</option>
-                        <option value="epub">EPUB</option>
-                    </select>
-                </label>
-                <label class="field">
-                    <span>短剧IP查询</span>
-                    <div class="row">
-                        <label class="switch">
-                            <input type="checkbox" id="set-sd-enabled"/>
-                            <span class="slider"></span>
-                        </label>
-                        <span class="hint">打开番茄书籍详情时自动查询是否已被改编成短剧</span>
-                    </div>
-                </label>
-                <div class="row">
-                    <button id="btn-save-settings" class="btn primary">保存设置</button>
-                </div>
-            </div>
         </div>
     </div>
 </div>

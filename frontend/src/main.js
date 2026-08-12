@@ -73,12 +73,19 @@ $('btn-open-library').addEventListener('click', () => {
 $('lib-close').addEventListener('click', () => $('lib-backdrop').classList.add('hidden'));
 $('lib-backdrop').addEventListener('click', (e) => { if (e.target === $('lib-backdrop')) $('lib-backdrop').classList.add('hidden'); });
 
-$('btn-open-settings').addEventListener('click', () => {
-    $('settings-backdrop').classList.remove('hidden');
-    loadSettings();
+$('btn-open-settings').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const pop = $('settings-pop');
+    pop.classList.toggle('hidden');
+    if (!pop.classList.contains('hidden')) loadSettings();
 });
-$('settings-close').addEventListener('click', () => $('settings-backdrop').classList.add('hidden'));
-$('settings-backdrop').addEventListener('click', (e) => { if (e.target === $('settings-backdrop')) $('settings-backdrop').classList.add('hidden'); });
+// 点击悬浮菜单外部关闭
+document.addEventListener('click', (e) => {
+    const pop = $('settings-pop');
+    if (!pop.classList.contains('hidden') && !e.target.closest('#settings-pop') && !e.target.closest('#btn-open-settings')) {
+        pop.classList.add('hidden');
+    }
+});
 
 // ---------------------------------------------------------------------------
 // 排行榜(整合进搜索页:平台共用顶部下拉,频道按钮 + 榜单名称 + 题材 一行)
@@ -115,16 +122,19 @@ async function initRank() {
             return;
         }
     }
-    switchPlatform();
+    await switchPlatform();
 }
 
 // 平台下拉变化 → 重建榜单导航(频道标签/榜单名称选项)并回到综合热榜
-function switchPlatform() {
+async function switchPlatform() {
     const isQimao = curPlatform() === 'qimao';
-    // 改编书单频道仅七猫显示
+    // 短剧IP功能关闭时,七猫改编书单不显示
+    let sdEnabled = true;
+    try { sdEnabled = !(await GetSettings()).shortdramaIgnored; } catch (e) {}
+    const canAdapt = isQimao && sdEnabled;
     document.querySelectorAll('#rank-default .rank-channel').forEach((b) => {
         if (b.dataset.channel === 'adapt') {
-            b.classList.toggle('hidden', !isQimao);
+            b.classList.toggle('hidden', !canAdapt);
             b.textContent = '🎬 改编书单';
         } else if (b.dataset.channel === 'hot') {
             b.textContent = '综合热榜';
@@ -132,8 +142,8 @@ function switchPlatform() {
             b.textContent = isQimao ? (b.dataset.channel === '男频' ? '男生' : '女生') : b.dataset.channel;
         }
     });
-    // 平台切到番茄时,若当前在改编书单频道则回综合热榜
-    if (rankChannel === 'adapt' && !isQimao) rankChannel = 'hot';
+    // 平台切到番茄或短剧功能关闭时,若当前在改编书单频道则回综合热榜
+    if (rankChannel === 'adapt' && !canAdapt) rankChannel = 'hot';
     const rt = $('rank-type');
     const defs = isQimao
         ? QIMAO_TYPES
@@ -145,7 +155,7 @@ function switchPlatform() {
         op.textContent = d.name;
         rt.appendChild(op);
     });
-    selectChannel(rankChannel === 'adapt' && isQimao ? 'adapt' : 'hot');
+    selectChannel(rankChannel === 'adapt' && canAdapt ? 'adapt' : 'hot');
 }
 
 // 频道切换: 综合热榜 / 男频(男生) / 女频(女生) / 改编书单(仅七猫)
@@ -724,24 +734,28 @@ $('af-next').addEventListener('click', () => { if (adaptPage < adaptPages) { ada
 // ---------------------------------------------------------------------------
 async function loadSettings() {
     const s = await GetSettings();
-    $('set-dir').value = s.downloadDir || '';
+    $('set-dir').textContent = s.downloadDir || '~/Downloads';
     $('set-format').value = s.format || 'txt';
     $('set-sd-enabled').checked = !s.shortdramaIgnored;   // 短剧IP开关 = 启用状态
 }
 
-$('btn-pick-dir').addEventListener('click', async () => {
+// 点击文件夹名 → 弹出选择框
+$('set-dir').addEventListener('click', async () => {
     const dir = await PickDirectory();
-    if (dir) $('set-dir').value = dir;
+    if (dir) $('set-dir').textContent = dir;
 });
 
 $('btn-save-settings').addEventListener('click', async () => {
     const s = await GetSettings();
-    s.downloadDir = $('set-dir').value.trim() || s.downloadDir;
+    s.downloadDir = $('set-dir').textContent.trim() || s.downloadDir;
     s.format = $('set-format').value;
     await SetSettings(s);
     await SetShortdramaIgnored(!$('set-sd-enabled').checked);   // 开关控制短剧IP查询
+    $('settings-pop').classList.add('hidden');
     toast('✅ 设置已保存');
     loadLibrary();
+    // 刷新榜单导航(短剧功能关闭时隐藏七猫改编书单)
+    if (!$('rank-default').classList.contains('hidden')) switchPlatform();
 });
 
 // ---------------------------------------------------------------------------

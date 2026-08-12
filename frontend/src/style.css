@@ -162,6 +162,25 @@ input, textarea { user-select: text; }
 }
 .header-actions { display: flex; gap: 10px; }
 
+/* 设置悬浮菜单(锚定在 ⚙️ 按钮下方) */
+.settings-wrap { position: relative; }
+.settings-pop {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 360px;
+    padding: 14px;
+    background: var(--card);
+    border: 1px solid var(--separator);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    z-index: 200;
+    animation: popIn .18s ease;
+}
+.settings-pop .set-group { margin-bottom: 12px; }
+
 .tabs {
     display: flex;
     gap: 2px;
@@ -529,10 +548,21 @@ main { padding-top: 20px; }
     min-height: 0;
     max-height: calc(100vh - 60px);
 }
+/* 下载弹窗与书籍详情弹窗同宽高 */
+#lib-backdrop .modal {
+    width: min(960px, calc(100vw - 40px));
+    min-height: 480px;
+    max-height: calc(100vh - 40px);
+}
 .panel-body {
     padding: 28px 30px 30px;
     overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
+.panel-body .results { flex: 1; }
 .panel-title {
     font-size: 17px;
     font-weight: 600;
@@ -718,6 +748,71 @@ main { padding-top: 20px; }
     flex-direction: column;
     gap: 20px;
     box-shadow: var(--shadow-sm);
+}
+
+/* 设置分组(macOS 系统设置风格:圆角卡片 + 分隔线,标签左控件右) */
+.set-group {
+    background: var(--card);
+    border: 1px solid var(--separator);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-sm);
+}
+.set-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 18px;
+    min-height: 54px;
+}
+.set-row + .set-row { border-top: .5px solid var(--separator); }
+.set-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    flex-shrink: 0;
+    letter-spacing: -0.01em;
+}
+.set-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+}
+.set-field .input {
+    flex: 1;
+    min-width: 0;
+    max-width: 340px;
+    text-align: right;
+    font-size: 13px;
+}
+.set-path {
+    max-width: 210px;
+    padding: 6px 12px;
+    border: 1px solid var(--separator-strong);
+    background: var(--fill);
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all .15s;
+}
+.set-path:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.set-field .select {
+    width: auto;
+    font-size: 13px;
+}
+.set-save {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > span { font-weight: 500; font-size: 13px; color: var(--text); }
