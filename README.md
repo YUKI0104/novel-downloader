@@ -145,6 +145,28 @@ go test -run TestE2E -v   # 无 GUI 的逻辑链路测试(会真连七猫/番茄
   需先在 Edge 登录过 `shortdramas.com` 并保持会话有效。
 - **关键坑**:`http.Client{Timeout: 60}` 是 **60 纳秒**而非 60 秒,必须写 `60 * time.Second`。
 
+## ⚠️ Windows 移植说明(供有需要的开发者)
+
+本项目**只支持 macOS**(arm64 + x86_64 通用二进制),暂不原生支持 Windows。
+Wails v2 本身支持 Windows(基于 WebView2/Edge Chromium),番茄内核也有官方 Win64 版本,因此**理论上可移植**,但有以下几处 macOS 专属逻辑需要改造:
+
+| 位置 | 文件 | macOS 现状 | Windows 需要 |
+|---|---|---|---|
+| 用户主目录 | `app.go` / `shortdrama.go` / `fanqie.go` | `os.Getenv("HOME")` | `os.UserHomeDir()`(Windows 为 `%USERPROFILE%`) |
+| 打开文件夹 | `app.go` | `exec.Command("open", path)` | `explorer`(如 `explorer /select, <path>`) |
+| 数据/缓存目录 | `app.go` / `fanqie.go` | `~/Library/Application Support/...` | `%APPDATA%` / `%LOCALAPPDATA%` |
+| 番茄内核路径 | `app.go` / `fanqie.go` | `~/bin/Tomato-Novel-Downloader` | `TomatoNovelDownloader-Win64-v2.4.13.exe`(官方有 Win64 版) |
+| PID 文件 | `fanqie.go` | `/tmp/tomato-server.pid` | `os.TempDir()` |
+| **Edge cookie 解密** | `shortdrama.go` | keychain(`security`)+ PBKDF2 + AES | **DPAPI**(`CryptUnprotectData`)+ 读取 `Local State` 的 `os_crypt.encrypted_key` 解密出密钥,再 AES-128-CBC 解 cookie |
+
+**移植建议**:
+- 用 Go **build tag**(`//go:build windows` / `//go:build !windows`)写平台专属文件,不破坏 macOS 版。
+- 下载核心(搜索 / 榜单 / 改编书单 / 下载)基本是纯移植,主要改路径与 `open` 命令。
+- **短剧后台检索**依赖 Edge 会话解密,Windows 端需要 DPAPI 实现(注意 Windows 下 cookie 加密结构:Local State 里的密钥先 DPAPI 解密,再解 v10 cookie,库版本 ≥ 24 同样要去 32 字节前缀)。
+- Windows 构建:`wails build -platform windows/amd64`(需 Windows 环境或交叉编译工具链)。
+
+欢迎有能力、有 Windows 环境的开发者 Fork 后自行移植修改与测试。
+
 ## 🙏 致谢
 
 本项目在开发过程中参考 / 复用了以下开源项目,在此致以诚挚感谢:
