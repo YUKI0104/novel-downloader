@@ -6,6 +6,7 @@ package fanqie
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -376,13 +377,38 @@ type RankGroup struct {
 	Genres []RankGenre // 该性别下的类型榜单
 }
 
-func fetchHTML(rawURL string) (string, error) {
+// browserHeaders 完整浏览器请求头(贴合 Chrome,降低被 fanqie 反爬误判的几率)。
+// 注意不设置 Accept-Encoding:交给 net/http 自行处理 gzip 解压。
+func browserHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", fanqieWebUA)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Site", "none")
+	req.Header.Set("Cache-Control", "max-age=0")
+}
+
+// fetchGo 用 net/http 抓取,可选强制 HTTP/1.1 并附带浏览器 cookie。
+func fetchGo(rawURL string, forceH1 bool, cookies map[string]string) (string, error) {
+	tr := &http.Transport{ForceAttemptHTTP2: !forceH1}
+	if forceH1 {
+		tr.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
+	}
 	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", fanqieWebUA)
-	resp, err := (&http.Client{Timeout: 20 * time.Second}).Do(req)
+	browserHeaders(req)
+	if len(cookies) > 0 {
+		parts := make([]string, 0, len(cookies))
+		for k, v := range cookies {
+			parts = append(parts, k+"="+v)
+		}
+		req.Header.Set("Cookie", strings.Join(parts, "; "))
+	}
+	resp, err := (&http.Client{Timeout: 20 * time.Second, Transport: tr}).Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -395,6 +421,64 @@ func fetchHTML(rawURL string) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// fetchCurl 用系统 curl 兜底:TLS 指纹/协议栈与 Go 不同,反爬可能放行。
+func fetchCurl(rawURL string) (string, error) {
+	args := []string{"--compressed", "--http1.1", "-sS", "-L", "--max-time", "25",
+		"-A", fanqieWebUA,
+		"-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+		"-H", "Accept-Language: zh-CN,zh;q=0.9,en;q=0.8",
+		"-H", "Sec-Fetch-Dest: document",
+		"-H", "Sec-Fetch-Mode: navigate",
+		"-H", "Sec-Fetch-Site: none",
+		"-H", "Upgrade-Insecure-Requests: 1",
+		rawURL}
+	if cookies, err := browserCookies("fanqienovel.com"); err == nil && len(cookies) > 0 {
+		parts := make([]string, 0, len(cookies))
+		for k, v := range cookies {
+			parts = append(parts, k+"="+v)
+		}
+		args = append(args, "-b", strings.Join(parts, "; "))
+	}
+	out, err := exec.Command("/usr/bin/curl", args...).CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("curl: %v", err)
+	}
+	if len(out) == 0 {
+		return "", errors.New("curl: 空响应")
+	}
+	return string(out), nil
+}
+
+// fetchHTML 拉取番茄网页(榜单页)。fanqie 反爬会直接掐断非浏览器客户端
+// (返回 HTTP 444 / 403),按 完整浏览器头 → 带浏览器 cookie → curl 兜底
+// 逐层尝试,全部失败时给出可操作的提示。
+func fetchHTML(rawURL string) (string, error) {
+	var lastErr error
+	// 1) Go 客户端 + 完整浏览器头,先 HTTP/2 后 HTTP/1.1
+	for _, h1 := range []bool{false, true} {
+		if s, err := fetchGo(rawURL, h1, nil); err == nil {
+			return s, nil
+		} else {
+			lastErr = err
+		}
+	}
+	// 2) 带上浏览器里已有的 fanqienovel.com cookie 再试(访问过官网的用户有 ttwid 等)
+	if cookies, err := browserCookies("fanqienovel.com"); err == nil && len(cookies) > 0 {
+		if s, err := fetchGo(rawURL, true, cookies); err == nil {
+			return s, nil
+		} else {
+			lastErr = err
+		}
+	}
+	// 3) curl 兜底
+	if s, err := fetchCurl(rawURL); err == nil {
+		return s, nil
+	} else {
+		lastErr = err
+	}
+	return "", fmt.Errorf("%v; 番茄官网反爬拦截(请求 fanqienovel.com 被拒)。建议先用浏览器打开 https://fanqienovel.com 完成访问后再重试;若仍失败,请检查网络或代理", lastErr)
 }
 
 func isObfuscated(s string) bool {
