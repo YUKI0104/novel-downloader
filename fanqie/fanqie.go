@@ -52,6 +52,14 @@ type Client struct {
 
 	rankMu    sync.Mutex
 	rankCache map[string]rankCacheEntry // URL → 榜单缓存
+
+	Log func(format string, args ...interface{}) // 可选诊断日志回调(由 App 注入)
+}
+
+func (c *Client) logf(format string, args ...interface{}) {
+	if c.Log != nil {
+		c.Log(format, args...)
+	}
 }
 
 // NewClient 默认配置。tomatoBin 为空则用 ~/bin/Tomato-Novel-Downloader。
@@ -288,12 +296,37 @@ type JobStatus struct {
 // 业务接口
 // ---------------------------------------------------------------------------
 
-// Search 搜索。
+// Search 搜索。番茄搜索接口会被风控/内核预热影响返回空,空结果自动重试一次。
 func (c *Client) Search(keyword string) ([]SearchResult, error) {
-	data, err := c.apiGet("/api/search", map[string]string{"q": keyword})
-	if err != nil {
-		return nil, err
+	var results []SearchResult
+	for attempt := 0; attempt < 2; attempt++ {
+		data, err := c.apiGet("/api/search", map[string]string{"q": keyword})
+		if err != nil {
+			c.logf("搜索[%s] 第%d次 失败: %v", keyword, attempt+1, err)
+			return nil, err
+		}
+		results = parseSearchResults(data)
+		c.logf("搜索[%s] 第%d次 结果 %d 条", keyword, attempt+1, len(results))
+		if len(results) > 0 || len(keyword) < 2 || attempt > 0 {
+			return results, nil
+		}
+		if raw, err := json.Marshal(data); err == nil {
+			c.logf("搜索[%s] 空结果,内核返回: %s", keyword, truncBytes(raw, 400))
+		}
+		time.Sleep(1200 * time.Millisecond) // 首次空:稍等重试(预热/临时风控)
 	}
+	return results, nil
+}
+
+// truncBytes 截断用于日志,避免刷爆。
+func truncBytes(b []byte, n int) string {
+	if len(b) <= n {
+		return string(b)
+	}
+	return string(b[:n]) + "…"
+}
+
+func parseSearchResults(data map[string]interface{}) []SearchResult {
 	items, _ := data["items"].([]interface{})
 	var results []SearchResult
 	for _, it := range items {
@@ -321,7 +354,7 @@ func (c *Client) Search(keyword string) ([]SearchResult, error) {
 		}
 		results = append(results, r)
 	}
-	return results, nil
+	return results
 }
 
 // Preview 书籍详情。

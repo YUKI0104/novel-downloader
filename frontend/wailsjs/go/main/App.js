@@ -14,6 +14,10 @@ export function Download(arg1, arg2) {
   return window['go']['main']['App']['Download'](arg1, arg2);
 }
 
+export function FixKeychainAccess(arg1) {
+  return window['go']['main']['App']['FixKeychainAccess'](arg1);
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -54,6 +58,10 @@ export function RemoveLibraryItem(arg1, arg2) {
   return window['go']['main']['App']['RemoveLibraryItem'](arg1, arg2);
 }
 
+export function RevealLog() {
+  return window['go']['main']['App']['RevealLog']();
+}
+
 export function Search(arg1, arg2) {
   return window['go']['main']['App']['Search'](arg1, arg2);
 }
@@ -72,4 +80,8 @@ export function ShortdramaSearch(arg1) {
 
 export function ShortdramaSessionStatus() {
   return window['go']['main']['App']['ShortdramaSessionStatus']();
+}
+
+export function ShortdramaSessionStatusEx() {
+  return window['go']['main']['App']['ShortdramaSessionStatusEx']();
 }

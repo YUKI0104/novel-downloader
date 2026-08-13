@@ -5,7 +5,8 @@ import {
     GetSettings, SetSettings,
     OpenFolder, PickDirectory, RemoveLibraryItem,
     RankingCategories, RankingBooks, QimaoRankBooks, QimaoAdaptConfig, QimaoAdaptBooks,
-    ShortdramaSearch, SetShortdramaIgnored, ShortdramaSessionStatus,
+    ShortdramaSearch, SetShortdramaIgnored, ShortdramaSessionStatusEx, FixKeychainAccess,
+    RevealLog,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -317,7 +318,7 @@ async function loadQimao() {
         });
         // 七猫榜单: 自动查短剧后台,命中高亮并排最前
         if (rankChecks.length) {
-            try { if (!(await GetSettings()).shortdramaIgnored) {
+            try { if (await sdActive()) {
                 checkShortdramaBackend(rankChecks, 'rank-list', false).then((hits) => {
                     if (hits > 0) $('rank-status').textContent = `TOP ${books.length} · ${qimaoGender === '0' ? '男生' : '女生'}·${tname} · ${hits} 本在短剧后台`;
                 });
@@ -376,7 +377,7 @@ async function loadRank(url) {
         });
         // 番茄榜单: 自动查短剧后台,命中高亮并排最前
         if (rankChecks.length) {
-            try { if (!(await GetSettings()).shortdramaIgnored) {
+            try { if (await sdActive()) {
                 checkShortdramaBackend(rankChecks, 'rank-list', false).then((hits) => {
                     if (hits > 0) $('rank-status').textContent = `TOP ${books.length} · ${rankLabel()} · ${hits} 本在短剧后台`;
                 });
@@ -458,13 +459,12 @@ async function doSearch() {
         // 排序 + 短剧后台检查
         if (sdChecks.length) {
             try {
-                const ignored = (await GetSettings()).shortdramaIgnored;
-                if (ignored) {
-                    sortList(sdChecks, 'results', false);   // 短剧模式关闭: 在读→字数
-                } else {
+                if (await sdActive()) {
                     checkShortdramaBackend(sdChecks, 'results', true).then((hits) => {
                         if (hits > 0) setStatus(`共 ${items.length} 条结果 · ${hits} 本在短剧后台`);
                     });
+                } else {
+                    sortList(sdChecks, 'results', false);   // 短剧模式关闭: 在读→字数
                 }
             } catch (e) {}
         }
@@ -563,7 +563,16 @@ function checkShortdramaBackend(items, containerId, fullSort) {
                         if (parseInt(best.adaptingCnt || '0', 10) > 0) chipsRow.appendChild(chipSym('sd-count', 'film', `改编 ${best.adaptingCnt}`));
                     }
                 }
-            } catch (e) { /* 无会话等错误静默 */ }
+            } catch (e) {
+                // 钥匙串被拦:弹一次引导界面,授权后自动重试整批
+                if (e && e.message && e.message.includes('KEYCHAIN_NEEDS_FIX')) {
+                    showKeychainDialog(() => checkShortdramaBackend(items, containerId, fullSort));
+                } else if (e && e.message && e.message.includes('短剧后台返回错误') && !sdLoginShown) {
+                    // 会话失效:弹引导窗口(仅一次),重新检测=重跑整批
+                    showSdLoginDialog(e.message, () => checkShortdramaBackend(items, containerId, fullSort));
+                }
+                /* 无会话等其他错误静默 */
+            }
         }
     };
     return Promise.all([worker(), worker(), worker()]).then(() => {
@@ -949,13 +958,27 @@ $('set-format').addEventListener('change', async () => {
     toast('已保存格式', false, 'check');
 });
 
+// 导出诊断日志 → 在 Finder 中显示日志文件
+$('set-export-log').addEventListener('click', async () => {
+    try {
+        const path = await RevealLog();
+        toast('日志已打开: ' + path, false, 'check');
+    } catch (e) {
+        toast('导出日志失败: ' + (e.message || e), true);
+    }
+});
+
 // 短剧模式开关 → 立即保存
 $('set-sd-enabled').addEventListener('change', async () => {
     const on = $('set-sd-enabled').checked;
     await SetShortdramaIgnored(!on);
-    toast(on ? '已开启短剧模式' : '已关闭短剧模式', false, on ? 'check' : '');
     // 刷新榜单导航(关闭时隐藏七猫改编书单)
     if (!$('rank-default').classList.contains('hidden')) switchPlatform();
+    if (on) {
+        await sdStatusFeedback('已开启短剧模式');   // 重开也校验会话,失效要提醒
+    } else {
+        toast('已关闭短剧模式', false, '');
+    }
 });
 
 // ---------------------------------------------------------------------------
@@ -964,9 +987,9 @@ $('set-sd-enabled').addEventListener('change', async () => {
 async function loadShortdramaStrip(title) {
     const strip = $('m-sd-strip');
     const hint = $('m-sd-hint');
-    // 用户已忽略短剧数据功能,不再尝试
+    // 短剧模式未启用(忽略/未答复首启询问)则不再尝试
     try {
-        if ((await GetSettings()).shortdramaIgnored) return;
+        if (!(await sdActive())) return;
     } catch (e) { return; }
     try {
         const items = await ShortdramaSearch(title);
@@ -980,6 +1003,20 @@ async function loadShortdramaStrip(title) {
         $('sd-adapting').closest('.sd-item').classList.toggle('sd-alert', parseInt(best.adaptingCnt || '0', 10) > 0);
         strip.classList.remove('hidden');
     } catch (e) {
+        // 钥匙串被拦:弹引导界面,授权成功后自动重查
+        if (e && e.message && e.message.includes('KEYCHAIN_NEEDS_FIX')) {
+            showKeychainDialog(() => loadShortdramaStrip(title));
+            return;
+        }
+        // 会话/账号问题(登录失效等):显示具体原因,不静默
+        if (e && e.message && e.message.includes('短剧后台返回错误')) {
+            const icon = hint.querySelector('.sym');
+            const wrap = icon ? icon.parentElement : hint;
+            while (wrap.childNodes.length > 1) wrap.removeChild(wrap.lastChild); // 保留图标,替换文案
+            wrap.appendChild(document.createTextNode('短剧IP数据未加载:' + e.message));
+            hint.classList.remove('hidden');
+            return;
+        }
         // 无浏览器登录态时提醒用户(其他错误静默)
         if (e && e.message && e.message.includes('登录态')) {
             hint.classList.remove('hidden');
@@ -999,6 +1036,110 @@ $('btn-sd-ignore').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// 钥匙串授权引导(读取浏览器登录态被 macOS 拦截时弹出)
+// ---------------------------------------------------------------------------
+let kcRetry = null;   // 授权成功后的重试回调
+let kcShown = false;  // 防止并发请求重复弹窗
+
+function showKeychainDialog(onRetry) {
+    if (kcShown) return;
+    kcShown = true;
+    kcRetry = onRetry || null;
+    $('kc-password').value = '';
+    const s = $('kc-status');
+    s.className = 'status hidden';
+    s.textContent = '';
+    $('kc-backdrop').classList.remove('hidden');
+    $('kc-password').focus();
+}
+function closeKeychainDialog() {
+    kcShown = false;
+    kcRetry = null;
+    $('kc-backdrop').classList.add('hidden');
+}
+$('btn-kc-cancel').addEventListener('click', closeKeychainDialog);
+// 手动方式:去系统弹窗点「总是允许」,然后自动重试原操作
+$('btn-kc-manual').addEventListener('click', () => {
+    const cb = kcRetry;
+    closeKeychainDialog();
+    toast('macOS 会再次弹窗,请点「总是允许」(而不是只点「允许」)', true, '');
+    if (cb) cb();
+});
+$('btn-kc-fix').addEventListener('click', async () => {
+    const pw = $('kc-password').value;
+    const s = $('kc-status');
+    if (!pw) { s.textContent = '请先输入你的 Mac 开机密码'; s.className = 'status error'; return; }
+    s.textContent = '正在授权…'; s.className = 'status';
+    const btn = $('btn-kc-fix');
+    btn.disabled = true;
+    try {
+        await FixKeychainAccess(pw);
+        s.textContent = '✅ 授权成功,正在重试…'; s.className = 'status';
+        const cb = kcRetry;
+        closeKeychainDialog();
+        toast('钥匙串已授权', false, 'check');
+        if (cb) cb();
+    } catch (e) {
+        s.textContent = '授权失败: ' + (e.message || e) + ' — 请确认开机密码正确,或点「手动方式」';
+        s.className = 'status error';
+    } finally {
+        btn.disabled = false;
+        $('kc-password').value = '';
+    }
+});
+$('kc-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-kc-fix').click(); });
+
+// 短剧模式会话校验反馈:okPrefix=开启提示前缀。
+// 重开短剧模式时也校验登录态(而不只是看 cookie),给用户明确反馈。
+async function sdStatusFeedback(okPrefix) {
+    const probe = async () => {
+        const st = await ShortdramaSessionStatusEx();
+        if (st.ok) {
+            toast(okPrefix + ',登录态正常', false, 'check');
+            return;
+        }
+        if (st.keychainNeedsFix) {
+            showKeychainDialog(probe);
+            return;
+        }
+        // 会话不可用(未登录/已失效/未开通头条号):弹引导窗口说明原因
+        showSdLoginDialog(st.message || '未检测到短剧登录态', probe);
+    };
+    await probe();
+}
+
+// sdActive 短剧模式是否处于"已启用"状态(用户已答复首启询问且未忽略)。
+async function sdActive() {
+    try {
+        const s = await GetSettings();
+        return !s.shortdramaIgnored && s.shortdramaPrompted;
+    } catch (e) { return false; }
+}
+
+// 短剧登录引导窗口(会话不可用/未登录时弹出)
+let sdLoginShown = false;
+function showSdLoginDialog(message, onRetry) {
+    sdLoginShown = true;
+    const txt = $('sd-login-text');
+    txt.textContent = '短剧后台返回:' + (message || '未检测到登录态');
+    $('sd-login-backdrop').classList.remove('hidden');
+    $('btn-sd-login-retry').onclick = async () => {
+        $('sd-login-backdrop').classList.add('hidden');
+        sdLoginShown = false;
+        if (!onRetry) return;
+        const btn = $('btn-sd-login-retry');
+        btn.disabled = true;
+        btn.textContent = '重新检测中…';
+        try { await onRetry(); }
+        finally { btn.disabled = false; btn.textContent = '重新检测'; }
+    };
+}
+$('btn-sd-login-close').addEventListener('click', () => {
+    $('sd-login-backdrop').classList.add('hidden');
+    sdLoginShown = false;
+});
+
+// ---------------------------------------------------------------------------
 // 首次进入:询问是否启用短剧模式
 // ---------------------------------------------------------------------------
 async function maybeShowShortdramaPrompt() {
@@ -1013,9 +1154,7 @@ $('btn-sd-enable').addEventListener('click', async () => {
     try {
         await SetShortdramaIgnored(false);
         $('sd-first-backdrop').classList.add('hidden');
-        // 检查本地浏览器登录态,给用户反馈
-        const ok = await ShortdramaSessionStatus();
-        toast(ok ? '已启用,检测到浏览器登录态' : '已启用;未检测到浏览器登录态,打开番茄详情时会提示登录', !ok, 'check');
+        await sdStatusFeedback('已启用');
     } catch (e) {
         toast('操作失败: ' + (e.message || e), true);
     }

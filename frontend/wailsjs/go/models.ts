@@ -104,6 +104,22 @@ export namespace main {
 	        this.characters = source["characters"];
 	    }
 	}
+	export class KeychainFixStatus {
+	    ok: boolean;
+	    keychainNeedsFix: boolean;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new KeychainFixStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.keychainNeedsFix = source["keychainNeedsFix"];
+	        this.message = source["message"];
+	    }
+	}
 	export class LibraryItem {
 	    name: string;
 	    path: string;

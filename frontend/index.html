@@ -40,6 +40,12 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="set-row">
+                            <span class="set-label">诊断日志</span>
+                            <div class="set-field">
+                                <button id="set-export-log" class="set-path" title="在 Finder 中显示日志文件">导出日志</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -189,6 +195,43 @@
         <div class="cf-actions">
             <button id="btn-sd-enable" class="btn primary">启用</button>
             <button id="btn-sd-skip" class="btn ghost">忽略</button>
+        </div>
+    </div>
+</div>
+
+<!-- 钥匙串授权引导 -->
+<div id="kc-backdrop" class="modal-backdrop hidden">
+    <div class="confirm" role="dialog" aria-modal="true">
+        <h3>需要授权访问浏览器钥匙串</h3>
+        <p class="cf-text">本软件需要读取浏览器里保存的登录态密钥(用于查询短剧后台)。
+macOS 弹出的「security 想要访问钥匙串」就是在问这个权限。
+
+点「一键授权」即可永久解决,以后不再弹窗。</p>
+        <input id="kc-password" class="kc-input" type="password" placeholder="你的 Mac 开机密码" autocomplete="off" />
+        <p class="kc-note">密码仅用于本次授权,不会保存或上传。</p>
+        <div class="cf-actions">
+            <button id="btn-kc-fix" class="btn primary">一键授权</button>
+            <button id="btn-kc-manual" class="btn ghost">手动方式</button>
+            <button id="btn-kc-cancel" class="btn ghost">取消</button>
+        </div>
+        <p id="kc-status" class="status hidden"></p>
+    </div>
+</div>
+
+<!-- 短剧登录引导(会话不可用/未登录时) -->
+<div id="sd-login-backdrop" class="modal-backdrop hidden">
+    <div class="confirm" role="dialog" aria-modal="true">
+        <h3>无法使用短剧后台</h3>
+        <p class="cf-text" id="sd-login-text">短剧后台提示获取不到头条号。</p>
+        <p class="kc-note" style="margin-bottom:16px">可能原因:
+· 浏览器里短剧登录已失效 → 请在 <b>Chrome / Edge / Brave / Vivaldi / Opera</b> 中打开并登录
+   www.shortdramas.com
+· 账号未开通头条号 → 需先开通头条号才能查询 IP
+
+完成登录/开通后,点「重新检测」。</p>
+        <div class="cf-actions">
+            <button id="btn-sd-login-retry" class="btn primary">重新检测</button>
+            <button id="btn-sd-login-close" class="btn ghost">知道了</button>
         </div>
     </div>
 </div>

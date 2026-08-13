@@ -63,6 +63,10 @@
 > 🔐 **登录态说明**:短剧后台数据需要登录权限,本软件会**自动检测本机已登录的浏览器会话**。
 > 支持 **Chrome、Edge、Brave、Vivaldi、Opera**(均为 Chromium 内核,任一登录即可)。
 > **不支持 Safari**。若以上浏览器均未登录 `www.shortdramas.com`,打开番茄详情时会显示**橙色提示条**引导登录。
+>
+> 🔑 **首次使用若弹出「security 想要访问钥匙串」**:
+> 这是 macOS 在询问是否允许读取浏览器的钥匙串密钥(用于解密登录态)。请在弹出的对话框中点**「总是允许」**,一次即可,之后不再弹出。
+> 若弹窗反复出现或卡住:打开「终端」运行一次 `security set-key-partition-list -S apple-tool:,apple: -s -k <你的开机密码> login`(把 `<你的开机密码>` 换成 macOS 登录密码),把 `security` 命令加入授权列表后即一劳永逸。
 
 ### 体验
 - 🧭 **极简界面**:仅一个搜索页;「📂 下载」「⚙️ 设置」为顶部按钮,点击弹出管理弹窗/悬浮菜单
@@ -73,7 +77,7 @@
 
 ## 🚀 快速上手
 
-1. **下载**:从 [Releases](https://github.com/YUKI0104/novel-downloader/releases) 获取 `FanQieMao-Downloader-v1.2.1.dmg`(macOS 通用:Apple 芯片与 Intel 均可)。
+1. **下载**:从 [Releases](https://github.com/YUKI0104/novel-downloader/releases) 获取 `FanQieMao-Downloader-v1.2.2.dmg`(macOS 通用:Apple 芯片与 Intel 均可)。
 2. **安装**:打开 DMG,把 App 拖入「应用程序」。因未签名,首次打开请右键 →「打开」,或执行 `xattr -cr /Applications/番茄猫下载器.app`。
 3. **下载小说**:在搜索页搜书名 → 点开详情 → 下载。默认存到 `~/Downloads`;顶部「📂 下载」按钮管理已下载文件。
 4. **短剧 IP**(可选):首次进入会询问是否启用。启用后需先在 **Chrome / Edge / Brave / Vivaldi / Opera** 任一浏览器登录 `www.shortdramas.com`(番茄短剧创作者中心),本软件会自动检测并读取该登录态。

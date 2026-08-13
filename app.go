@@ -134,8 +134,52 @@ func NewApp() *App {
 // startup 启动时保存 ctx 并加载设置。
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	initLog()
+	appLog("应用启动")
 	a.settings = a.loadSettings()
 	a.initClients()
+}
+
+// RevealLog 在 Finder 中显示日志文件并返回其路径,便于用户导出诊断。
+// 会把番茄内核日志也复制到同目录(kernel.log),一并导出。
+func (a *App) RevealLog() (string, error) {
+	path := logPath()
+	if _, err := os.Stat(path); err != nil {
+		return "", errors.New("日志文件不存在")
+	}
+	a.exportKernelLog()
+	appLog("用户导出日志: %s", path)
+	// open -R 在 Finder 中高亮文件
+	if err := exec.Command("open", "-R", path).Start(); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// exportKernelLog 把番茄内核的日志复制到 appSupportDir()/kernel.log。
+func (a *App) exportKernelLog() {
+	logsDir := filepath.Join(os.Getenv("HOME"), "Library", "Caches", "tomato-novel-downloader", "logs")
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		return
+	}
+	var newest string
+	var newestTime int64
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if fi, err := e.Info(); err == nil && fi.ModTime().Unix() > newestTime {
+			newest = filepath.Join(logsDir, e.Name())
+			newestTime = fi.ModTime().Unix()
+		}
+	}
+	if newest == "" {
+		return
+	}
+	if b, err := os.ReadFile(newest); err == nil {
+		os.WriteFile(filepath.Join(appSupportDir(), "kernel.log"), b, 0644)
+	}
 }
 
 // shutdown 退出时停止番茄服务。
@@ -174,6 +218,7 @@ func (a *App) initClients() {
 	// 内核 save_path 用应用私有目录:避免每次预览书都把封面/临时目录写进用户下载文件夹
 	kernelDir := filepath.Join(appSupportDir(), "downloads")
 	a.fanqie = fanqie.NewClient(resolveFanqieBin(a.settings.FanqieBin), "", kernelDir)
+	a.fanqie.Log = appLog
 }
 
 // ---------------------------------------------------------------------------
@@ -252,10 +297,12 @@ func (a *App) Search(platform, keyword string) ([]SearchItem, error) {
 	switch platform {
 	case "fanqie":
 		if err := a.fanqie.EnsureServer(); err != nil {
+			appLog("搜索[%s] 内核启动失败: %v", keyword, err)
 			return nil, err
 		}
 		rs, err := a.fanqie.Search(keyword)
 		if err != nil {
+			appLog("搜索[%s] 失败: %v", keyword, err)
 			return nil, err
 		}
 		items := make([]SearchItem, 0, len(rs))
@@ -266,10 +313,12 @@ func (a *App) Search(platform, keyword string) ([]SearchItem, error) {
 				Score: r.Score, Words: r.Words, Hot: r.Hot, CoverURL: r.CoverURL,
 			})
 		}
+		appLog("搜索[%s] 番茄 共 %d 条", keyword, len(items))
 		return items, nil
 	default: // qimao
 		rs, err := a.qimao.Search(keyword)
 		if err != nil {
+			appLog("搜索[%s] 七猫失败: %v", keyword, err)
 			return nil, err
 		}
 		items := make([]SearchItem, 0, len(rs))
@@ -280,6 +329,7 @@ func (a *App) Search(platform, keyword string) ([]SearchItem, error) {
 				Score: r.Score, Words: r.Words, CoverURL: r.CoverURL,
 			})
 		}
+		appLog("搜索[%s] 七猫 共 %d 条", keyword, len(items))
 		return items, nil
 	}
 }
@@ -297,8 +347,9 @@ func (a *App) BookInfo(platform, bookID string) (*BookInfo, error) {
 		}
 		return &BookInfo{
 			Platform: "fanqie", BookID: b.BookID, Title: b.Title, Author: b.Author,
-			Description: b.Description, ChapterCount: b.ChapterCount, CoverURL: a.fanqie.ResolveCover(b.CoverURL),
-			Words: b.Words, Hot: b.Hot, Score: b.Score, Category: b.Category,
+			Description: b.Description, ChapterCount: b.ChapterCount,
+			CoverURL: displayableCover(a.fanqie.ResolveCover(b.CoverURL), 480),
+			Words:    b.Words, Hot: b.Hot, Score: b.Score, Category: b.Category,
 		}, nil
 	default:
 		id := qimao.ExtractBookID(bookID)
@@ -356,20 +407,29 @@ func (a *App) RankingBooks(rankURL string) ([]RankedBook, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make([]RankedBook, 0, len(books))
+	out := make([]RankedBook, len(books))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 8)
 	for i, b := range books {
-		out = append(out, RankedBook{
-			Position: i + 1,
-			Platform: "fanqie",
-			BookID:   b.BookID,
-			Title:    b.Title,
-			Author:   b.Author,
-			Words:    b.Words,
-			Hot:      b.Hot,
-			Score:    b.Score,
-			CoverURL: a.fanqie.ResolveCover(b.CoverURL),
-		})
+		wg.Add(1)
+		go func(i int, b fanqie.Book) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			out[i] = RankedBook{
+				Position: i + 1,
+				Platform: "fanqie",
+				BookID:   b.BookID,
+				Title:    b.Title,
+				Author:   b.Author,
+				Words:    b.Words,
+				Hot:      b.Hot,
+				Score:    b.Score,
+				CoverURL: displayableCover(a.fanqie.ResolveCover(b.CoverURL), 160),
+			}
+		}(i, b)
 	}
+	wg.Wait()
 	return out, nil
 }
 

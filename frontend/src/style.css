@@ -995,6 +995,27 @@ main { padding-top: 20px; }
 }
 .cf-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 
+/* 钥匙串授权引导弹窗 */
+.kc-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--separator);
+    background: var(--fill);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+}
+.kc-input:focus { border-color: var(--accent); }
+.kc-note {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin: 2px 0 16px;
+}
+#kc-status { margin-top: 14px; }
+
 /* ---------------------------------------------------------------------------
    Toast 提示(macOS 通知样式)
    --------------------------------------------------------------------------- */

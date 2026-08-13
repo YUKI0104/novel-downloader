@@ -9,6 +9,8 @@ export function DefaultSettings():Promise<main.Settings>;
 
 export function Download(arg1:string,arg2:string):Promise<void>;
 
+export function FixKeychainAccess(arg1:string):Promise<string>;
+
 export function GetSettings():Promise<main.Settings>;
 
 export function Library():Promise<Array<main.LibraryItem>>;
@@ -29,6 +31,8 @@ export function RankingCategories():Promise<Array<main.RankCategory>>;
 
 export function RemoveLibraryItem(arg1:string,arg2:boolean):Promise<void>;
 
+export function RevealLog():Promise<string>;
+
 export function Search(arg1:string,arg2:string):Promise<Array<main.SearchItem>>;
 
 export function SetSettings(arg1:main.Settings):Promise<void>;
@@ -38,3 +42,5 @@ export function SetShortdramaIgnored(arg1:boolean):Promise<void>;
 export function ShortdramaSearch(arg1:string):Promise<Array<main.ShortdramaIP>>;
 
 export function ShortdramaSessionStatus():Promise<boolean>;
+
+export function ShortdramaSessionStatusEx():Promise<main.KeychainFixStatus>;
