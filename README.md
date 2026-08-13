@@ -123,17 +123,6 @@ go test -run TestE2E -v   # 无 GUI 的逻辑链路测试(会真连七猫/番茄
 - 番茄服务配置:`~/Library/Caches/tomato-novel-downloader/config.yml`
 - 默认下载目录:`~/Downloads`(直接下载到「下载」文件夹)
 
-## 🔧 技术备注
-
-- **七猫 API**:MD5 签名(`sign`)+ Dart hashCode 模拟 + AES-128-CBC 解密,均为 Go 原生实现;
-  榜单走官网 web 接口 `www.qimao.com/qimaoapi/api/rank/book-list`(无需签名,参数 `is_girl` + `rank_type`)。
-- **番茄 API**:通过 Rust 服务 `127.0.0.1:18423` 的 REST 接口;榜单抓官网 `/rank` 页(分类导航),
-  因官网书名被自定义字体混淆(PUA 私用区字符),榜单需经内核解码书名,已做并发 + 缓存优化。
-- **短剧后台搜索**:读 Edge cookie 库解密 `sessionid`(keychain 密钥 + PBKDF2("saltysalt",1003) + AES-128-CBC
-  + 库版本≥24 去 32 字节前缀),调 `www.shortdramas.com/api/origin/cp/playlet/ip/list` 按书名搜番茄 IP。
-  需先在 Edge 登录过 `shortdramas.com` 并保持会话有效。
-- **关键坑**:`http.Client{Timeout: 60}` 是 **60 纳秒**而非 60 秒,必须写 `60 * time.Second`。
-
 ## ⚠️ Windows 移植说明(供有需要的开发者)
 
 本项目**只支持 macOS**(arm64 + x86_64 通用二进制),暂不原生支持 Windows。
