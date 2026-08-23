@@ -470,6 +470,10 @@ async function doSearch() {
         }
     } catch (e) {
         setStatus('搜索失败: ' + (e.message || e), true);
+        // 钥匙串被拦:弹引导授权界面,授权后自动重试
+        if (e && e.message && e.message.includes('KEYCHAIN_NEEDS_FIX')) {
+            showKeychainDialog(() => doSearch());
+        }
     } finally {
         btn.disabled = false;
     }
@@ -676,6 +680,9 @@ async function showDetail(platform, bookId, fallbackTitle) {
         $('m-platform').textContent = PLATFORM_NAME[platform];
         $('m-author').textContent = info.author ? '作者: ' + info.author : '';
         $('m-tags').textContent = info.tags || '';
+        $('m-bookid').textContent = info.bookId ? 'ID: ' + info.bookId : '';
+        $('m-bookid').dataset.id = info.bookId || '';
+        $('m-copy-id').classList.toggle('hidden', !info.bookId);
         $('m-desc').textContent = info.description || '暂无简介';
         $('m-chapters').textContent = info.chapterCount ? `共 ${info.chapterCount} 章` : '';
         // 统计行: 评分 / 字数 / 人气在读 / 榜单 / 分类 / 主角
@@ -714,6 +721,22 @@ async function showDetail(platform, bookId, fallbackTitle) {
 // ---------------------------------------------------------------------------
 // 下载 + 进度
 // ---------------------------------------------------------------------------
+$('m-copy-id').addEventListener('click', async () => {
+    const id = $('m-bookid').dataset.id;
+    if (!id) return;
+    try {
+        await navigator.clipboard.writeText(id);
+    } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = id;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+    }
+    toast('已复制小说 ID: ' + id, false, 'check');
+});
+
 $('m-download').addEventListener('click', () => {
     if (!currentBook || downloading) return;
     downloading = true;

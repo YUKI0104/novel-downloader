@@ -689,7 +689,7 @@ func (c *Client) Download(bookID, outputDir, format string, progress func(done, 
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return "", err
 	}
-	base := SafeFilename(book.Title) + " " + SafeFilename(book.Author)
+	base := SafeFilename(book.Title) + " " + SafeFilename(book.Author) + " [" + SafeFilename(book.BookID) + "]"
 	switch format {
 	case "epub":
 		path := filepath.Join(outputDir, base+".epub")

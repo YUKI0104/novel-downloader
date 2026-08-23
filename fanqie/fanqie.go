@@ -775,7 +775,7 @@ func (c *Client) Download(bookID, outputDir string, start, end int, progress fun
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return "", err
 	}
-	target := filepath.Join(outputDir, SafeFilename(info.Title)+" "+SafeFilename(info.Author)+".txt")
+	target := filepath.Join(outputDir, SafeFilename(info.Title)+" "+SafeFilename(info.Author)+" ["+SafeFilename(info.BookID)+"].txt")
 	return c.relocateOutput(info, target)
 }
 
