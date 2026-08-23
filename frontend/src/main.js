@@ -683,6 +683,7 @@ async function showDetail(platform, bookId, fallbackTitle) {
         $('m-bookid').textContent = info.bookId ? 'ID: ' + info.bookId : '';
         $('m-bookid').dataset.id = info.bookId || '';
         $('m-copy-id').classList.toggle('hidden', !info.bookId);
+        $('m-copy-link').classList.toggle('hidden', !info.bookId || !bookURL(platform, info.bookId));
         $('m-desc').textContent = info.description || '暂无简介';
         $('m-chapters').textContent = info.chapterCount ? `共 ${info.chapterCount} 章` : '';
         // 统计行: 评分 / 字数 / 人气在读 / 榜单 / 分类 / 主角
@@ -721,20 +722,41 @@ async function showDetail(platform, bookId, fallbackTitle) {
 // ---------------------------------------------------------------------------
 // 下载 + 进度
 // ---------------------------------------------------------------------------
-$('m-copy-id').addEventListener('click', async () => {
-    const id = $('m-bookid').dataset.id;
-    if (!id) return;
+// 复制文本到剪贴板(剪贴板 API + execCommand 兜底)
+async function copyText(text) {
     try {
-        await navigator.clipboard.writeText(id);
+        await navigator.clipboard.writeText(text);
     } catch (e) {
         const ta = document.createElement('textarea');
-        ta.value = id;
+        ta.value = text;
         document.body.appendChild(ta);
         ta.select();
         document.execCommand('copy');
         ta.remove();
     }
+}
+
+// 平台书籍链接(番茄 page / 七猫 shuku)
+function bookURL(platform, id) {
+    if (platform === 'fanqie') return 'https://fanqienovel.com/page/' + id;
+    if (platform === 'qimao') return 'https://www.qimao.com/shuku/' + id + '/';
+    return '';
+}
+
+$('m-copy-id').addEventListener('click', () => {
+    const id = $('m-bookid').dataset.id;
+    if (!id) return;
+    copyText(id);
     toast('已复制小说 ID: ' + id, false, 'check');
+});
+
+$('m-copy-link').addEventListener('click', () => {
+    const id = $('m-bookid').dataset.id;
+    if (!id) return;
+    const url = bookURL(currentBook.platform, id);
+    if (!url) return;
+    copyText(url);
+    toast('已复制书籍链接', false, 'check');
 });
 
 $('m-download').addEventListener('click', () => {
