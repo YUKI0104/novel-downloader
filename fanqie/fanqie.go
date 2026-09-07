@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -32,6 +33,11 @@ const (
 	baseURLFmt   = "http://127.0.0.1:%d"
 	pidFile      = "/tmp/tomato-server.pid"
 	pollInterval = time.Second
+)
+
+var (
+	randMu sync.Mutex
+	randSrc = rand.NewSource(time.Now().UnixNano())
 )
 
 // rankCacheEntry 榜单缓存项(短 TTL,榜单变化不频繁)。
@@ -219,18 +225,30 @@ func (c *Client) apiGet(path string, params map[string]string) (map[string]inter
 		}
 		req.URL.RawQuery = q.Encode()
 	}
-	resp, err := (&http.Client{Timeout: 60 * time.Second}).Do(req)
+
+	// 设置随机 User-Agent
+	req.Header.Set("User-Agent", getRandomUserAgent())
+
+	// 创建超时客户端
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
+
 	var data map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, err
 	}
+
 	return data, nil
 }
 
@@ -299,23 +317,130 @@ type JobStatus struct {
 // Search 搜索。番茄搜索接口会被风控/内核预热影响返回空,空结果自动重试一次。
 func (c *Client) Search(keyword string) ([]SearchResult, error) {
 	var results []SearchResult
-	for attempt := 0; attempt < 2; attempt++ {
+	var lastError error
+
+	// 最多尝试 5 次，包括风控情况
+	for attempt := 0; attempt < 5; attempt++ {
+		c.logf("搜索[%s] 开始第%d次尝试...", keyword, attempt+1)
+
+		// 检查内核是否运行
+		if !c.isRunning() {
+			c.logf("番茄内核未运行，尝试启动...")
+			if err := c.EnsureServer(); err != nil {
+				c.logf("启动番茄内核失败: %v", err)
+				c.logf("请检查 Tomato-Novel-Downloader 是否正确安装")
+				c.logf("当前内核路径: %s", c.Tomato)
+				return nil, fmt.Errorf("启动番茄内核失败: %v。请检查 Tomato-Novel-Downloader 是否正确安装", err)
+			}
+			c.logf("番茄内核启动成功，等待 2 秒后重试...")
+			time.Sleep(2 * time.Second)
+			attempt-- // 减少重试次数
+			continue
+		}
+
 		data, err := c.apiGet("/api/search", map[string]string{"q": keyword})
 		if err != nil {
 			c.logf("搜索[%s] 第%d次 失败: %v", keyword, attempt+1, err)
+
+			// 如果是连接错误，尝试重启内核
+			if strings.Contains(err.Error(), "connection refused") ||
+			   strings.Contains(err.Error(), "timeout") ||
+			   strings.Contains(err.Error(), "EOF while parsing") {
+				c.logf("检测到内核连接问题，尝试重启...")
+				_ = c.StopServer()
+				time.Sleep(2 * time.Second)
+				attempt-- // 减少重试次数
+				continue
+			}
+
+			// 检查是否是 5xx 错误（风控导致）
+			if strings.Contains(err.Error(), "HTTP 5") {
+				c.logf("检测到风控错误，等待 %d 秒后重试...", 2+attempt)
+				lastError = err
+				// 需要更长的等待时间
+				time.Sleep(time.Duration(3+attempt) * time.Second)
+				continue
+			}
 			return nil, err
 		}
+
+		// 调试：打印原始响应
+		if raw, err := json.Marshal(data); err == nil {
+			c.logf("搜索[%s] 第%d次 原始响应: %s", keyword, attempt+1, truncBytes(raw, 500))
+		}
+
+		// 检查返回的数据是否为空（可能是风控导致的空响应）
+		if len(data) == 0 {
+			c.logf("搜索[%s] 第%d次 返回空数据，可能是风控", keyword, attempt+1)
+			lastError = errors.New("空响应（可能是风控）")
+			time.Sleep(time.Duration(2+attempt) * time.Second)
+			continue
+		}
+
+		// 检查是否有错误信息
+		if errMsg, ok := data["error"].(string); ok {
+			c.logf("搜索[%s] 第%d次 返回错误信息: %s", keyword, attempt+1, errMsg)
+
+			// 如果是 EOF 错误，可能是网络问题
+			if strings.Contains(errMsg, "EOF while parsing") || strings.Contains(errMsg, "网络错误") {
+				lastError = fmt.Errorf("网络解析错误: %s", errMsg)
+				time.Sleep(time.Duration(3+attempt) * time.Second)
+				continue
+			}
+
+			// 如果是风控相关错误，提示用户
+			if strings.Contains(errMsg, "风控") || strings.Contains(errMsg, "滑块验证") {
+				lastError = fmt.Errorf("搜索被风控限制: %s", errMsg)
+				c.logf("检测到风控限制，请稍后再试或更换搜索关键词")
+				time.Sleep(time.Duration(3+attempt) * time.Second)
+				continue
+			}
+		}
+
 		results = parseSearchResults(data)
 		c.logf("搜索[%s] 第%d次 结果 %d 条", keyword, attempt+1, len(results))
-		if len(results) > 0 || len(keyword) < 2 || attempt > 0 {
+
+		// 如果有结果，直接返回
+		if len(results) > 0 {
 			return results, nil
 		}
+
+		// 如果是空结果，记录并等待
 		if raw, err := json.Marshal(data); err == nil {
 			c.logf("搜索[%s] 空结果,内核返回: %s", keyword, truncBytes(raw, 400))
 		}
-		time.Sleep(1200 * time.Millisecond) // 首次空:稍等重试(预热/临时风控)
+
+		// 最后一次尝试不需要等待
+		if attempt < 4 {
+			time.Sleep(1200 * time.Millisecond) // 首次空:稍等重试(预热/临时风控)
+		}
 	}
-	return results, nil
+
+	// 所有尝试都失败，提供友好的错误信息
+	if lastError != nil {
+		errorMsg := lastError.Error()
+		if strings.Contains(errorMsg, "风控") || strings.Contains(errorMsg, "HTTP 5") {
+			return nil, fmt.Errorf("搜索失败，可能被番茄网站风控限制。请稍后再试或更换搜索关键词。")
+		}
+		return nil, fmt.Errorf("搜索失败，可能被番茄网站风控滑块验证限制: %v", lastError)
+	}
+
+	return nil, fmt.Errorf("搜索失败，未找到相关结果")
+}
+
+// userAgentPool 随机 User-Agent 池
+var userAgentPool = []string{
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0",
+}
+
+func getRandomUserAgent() string {
+	randMu.Lock()
+	defer randMu.Unlock()
+	return userAgentPool[rand.Intn(len(userAgentPool))]
 }
 
 // truncBytes 截断用于日志,避免刷爆。
