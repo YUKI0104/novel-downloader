@@ -1,0 +1,113 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25'
+
+    - name: Install Wails
+      run: |
+        go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+    - name: Build macOS app
+      run: |
+        # 构建通用版本
+        wails build -platform darwin/universal -clean
+
+        # 检查构建结果
+        if [ ! -f "build/bin/番茄猫下载器.app" ]; then
+          echo "❌ 构建失败：未找到应用包"
+          exit 1
+        fi
+
+        # 显示文件大小
+        du -sh build/bin/番茄猫下载器.app
+
+        # 验证内核
+        APP="build/bin/番茄猫下载器.app/Contents/Resources"
+        if [ -f "$APP/Tomato-Novel-Downloader" ]; then
+          API_CNT=$(strings "$APP/Tomato-Novel-Downloader" | grep -c 'api5-normal-sinfonlinec')
+          echo "内核官方 API 标记: $API_CNT"
+          if [ "$API_CNT" -lt 1 ]; then
+            echo "❌ 内核缺官方 API，禁止发布"
+            exit 1
+          fi
+        fi
+
+    - name: Create DMG
+      run: |
+        # 安装 create-dmg
+        brew install create-dmg
+
+        # 创建 DMG
+        create-dmg \
+          --volname "番茄猫下载器 v${GITHUB_REF#refs/tags/v}" \
+          --volicon "build/bin/番茄猫下载器.app/Contents/Resources/icon.icns" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "番茄猫下载器.app" 175 120 \
+          --hide-extension "番茄猫下载器.app" \
+          build/番茄猫下载器-v${GITHUB_REF#refs/tags/v}.dmg \
+          build/bin/
+
+        # 检查 DMG 是否创建成功
+        if [ ! -f "build/番茄猫下载器-v${GITHUB_REF#refs/tags/v}.dmg" ]; then
+          echo "❌ DMG 创建失败"
+          exit 1
+        fi
+
+        # 显示 DMG 信息
+        ls -lh build/番茄猫下载器-v*.dmg
+
+    - name: Upload Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: build/番茄猫下载器-v*.dmg
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        name: 番茄猫下载器 v${GITHUB_REF#refs/tags/v}
+        body: |
+          ## 🚀 新版本 (v${GITHUB_REF#refs/tags/v})
+
+          ### 📦 下载
+          点击上方按钮下载 DMG 安装包。
+
+          ### 📋 系统要求
+          - macOS 11.0 或更高版本
+          - Apple Silicon (M1/M2) 或 Intel x86_64 处理器
+
+          ### 🔧 安装说明
+          1. 下载 DMG 文件
+          2. 双击打开
+          3. 将"番茄猫下载器"拖拽到"应用程序"文件夹
+
+          ### 📝 更新说明
+          - 修复了番茄搜索 HTTP 502 错误
+          - 增强了重试机制和风控处理
+          - 优化了内核自动管理
+          - 添加了随机 User-Agent 支持
+
+          ### 🐛 Bug 修复
+          - 修复：番茄搜索风控滑块验证问题
+          - 修复：内核连接超时无法恢复
+          - 修复：EOF 解析错误
+
+          ---
+          *自动构建 - 请通过 GitHub Issues 反馈问题*
