@@ -711,6 +711,7 @@ main { padding-top: 20px; }
 .m-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .m-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .m-title-row h2 { font-size: 22px; letter-spacing: -0.02em; font-weight: 700; }
+.m-former { font-size: 12px; color: var(--text-secondary); margin: 2px 0 0; opacity: .8; }
 .meta { display: flex; gap: 12px; color: var(--text-secondary); margin: 8px 0; flex-wrap: wrap; font-size: 13px; }
 .m-id-row { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .m-id-row .btn { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', sans-serif; }

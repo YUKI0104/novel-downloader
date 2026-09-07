@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -54,6 +57,7 @@ type BookInfo struct {
 	Platform     string `json:"platform"`
 	BookID       string `json:"bookId"`
 	Title        string `json:"title"`
+	FormerTitle  string `json:"formerTitle"` // 曾用名(作者改名后,内核返回旧名;仅番茄)
 	Author       string `json:"author"`
 	Description  string `json:"description"`
 	ChapterCount int    `json:"chapterCount"`
@@ -292,6 +296,49 @@ func (a *App) DefaultSettings() Settings {
 // 搜索 / 详情
 // ---------------------------------------------------------------------------
 
+// fanqieIDRe 匹配番茄书页链接里的数字 ID(/page/<id>)。
+var fanqieIDRe = regexp.MustCompile(`/page/(\d{10,})`)
+
+// extractFanqieID 从关键词提取番茄书籍 ID:支持纯数字 ID 或 fanqienovel.com/page/<id> 链接。
+// 不匹配返回空字符串。
+func extractFanqieID(keyword string) string {
+	k := strings.TrimSpace(keyword)
+	if k == "" {
+		return ""
+	}
+	// 纯数字(10 位以上,番茄 book_id 均为长数字)
+	if isAllDigits(k) && len(k) >= 10 {
+		return k
+	}
+	// 书页链接
+	if m := fanqieIDRe.FindStringSubmatch(k); m != nil {
+		return m[1]
+	}
+	return ""
+}
+
+func isAllDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return len(s) > 0
+}
+
+// resolveFanqieTitle 处理番茄改名书:内核返回旧名,网页是当前名。
+// 仅当两名字互不包含时才算改名(避免"三体"vs"三体全集(全三册)"这类显示差异误报)。
+func (a *App) resolveFanqieTitle(bookID, kernelTitle string) (title, former string) {
+	web := a.fanqie.WebBookName(bookID)
+	if web == "" || web == kernelTitle {
+		return kernelTitle, ""
+	}
+	if strings.Contains(web, kernelTitle) || strings.Contains(kernelTitle, web) {
+		return kernelTitle, "" // 只是显示差异,不算改名
+	}
+	return web, kernelTitle // 完全不同名:作者改名,网页名为准
+}
+
 // Search 跨平台搜索。
 func (a *App) Search(platform, keyword string) ([]SearchItem, error) {
 	switch platform {
@@ -299,6 +346,25 @@ func (a *App) Search(platform, keyword string) ([]SearchItem, error) {
 		if err := a.fanqie.EnsureServer(); err != nil {
 			appLog("搜索[%s] 内核启动失败: %v", keyword, err)
 			return nil, err
+		}
+		// 纯数字 ID / 番茄书页链接 → 直接按 ID 定位
+		if id := extractFanqieID(keyword); id != "" {
+			b, err := a.fanqie.Preview(id)
+			if err != nil {
+				appLog("搜索[ID:%s] 失败: %v", id, err)
+				return nil, fmt.Errorf("未找到 ID 为 %s 的书籍", id)
+			}
+			title := b.Title
+			if t, _ := a.resolveFanqieTitle(id, b.Title); t != b.Title {
+				title = t // 改名书:用网页当前书名
+			}
+			appLog("搜索[ID:%s] 按 ID 命中《%s》", id, title)
+			return []SearchItem{{
+				Platform: "fanqie", BookID: b.BookID, Title: title,
+				Author: b.Author, Abstract: b.Description,
+				Score: b.Score, Words: b.Words, Hot: b.Hot,
+				CoverURL: a.fanqie.ResolveCover(b.CoverURL),
+			}}, nil
 		}
 		rs, err := a.fanqie.Search(keyword)
 		if err != nil {
@@ -345,12 +411,15 @@ func (a *App) BookInfo(platform, bookID string) (*BookInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &BookInfo{
+		info := &BookInfo{
 			Platform: "fanqie", BookID: b.BookID, Title: b.Title, Author: b.Author,
 			Description: b.Description, ChapterCount: b.ChapterCount,
 			CoverURL: displayableCover(a.fanqie.ResolveCover(b.CoverURL), 480),
 			Words:    b.Words, Hot: b.Hot, Score: b.Score, Category: b.Category,
-		}, nil
+		}
+		// 作者改名后内核仍返回旧名,抓网页当前书名纠正(失败静默回退旧名)
+		info.Title, info.FormerTitle = a.resolveFanqieTitle(bookID, b.Title)
+		return info, nil
 	default:
 		id := qimao.ExtractBookID(bookID)
 		b, err := a.qimao.BookDetail(id)

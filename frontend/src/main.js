@@ -627,6 +627,7 @@ function resetModal() {
     $('m-result').classList.add('hidden');
     $('m-sd-strip').classList.add('hidden');
     $('m-sd-hint').classList.add('hidden');
+    $('m-former').classList.add('hidden');
     $('m-progress-bar').style.width = '0%';
     $('m-progress-text').textContent = '';
     $('m-cover').style.visibility = 'hidden';
@@ -681,6 +682,9 @@ async function showDetail(platform, bookId, fallbackTitle) {
     try {
         const info = await BookInfo(platform, bookId);
         $('m-title').textContent = info.title || fallbackTitle;
+        // 作者改名后内核返回旧名,后端已用网页当前名纠正;提示曾用名
+        $('m-former').textContent = info.formerTitle ? '曾用名: ' + info.formerTitle : '';
+        $('m-former').classList.toggle('hidden', !info.formerTitle);
         $('m-platform').textContent = PLATFORM_NAME[platform];
         $('m-author').textContent = info.author ? '作者: ' + info.author : '';
         $('m-tags').textContent = info.tags || '';

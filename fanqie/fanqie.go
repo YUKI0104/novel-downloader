@@ -513,6 +513,23 @@ func (c *Client) ResolveCover(rel string) string {
 	return rel
 }
 
+// webNameRe 从书页 keywords meta 提取当前书名(第一个逗号前的项即书名)。
+var webNameRe = regexp.MustCompile(`<meta name="keywords" content="([^",]+)`)
+
+// WebBookName 抓取番茄官网书页,返回**当前**书名(网页实时值)。
+// 番茄作者改名后,内核官方 API 仍返回旧名,只有网页是最新的。
+// 抓不到(反爬/网络)时返回空字符串,调用方据此回退到旧名。
+func (c *Client) WebBookName(bookID string) string {
+	htmlStr, err := fetchHTML(rankBaseURL + "/page/" + bookID)
+	if err != nil {
+		return ""
+	}
+	if m := webNameRe.FindStringSubmatch(htmlStr); m != nil {
+		return html.UnescapeString(strings.TrimSpace(m[1]))
+	}
+	return ""
+}
+
 // ---------------------------------------------------------------------------
 // 排行榜(抓取番茄官网排行页)
 // ---------------------------------------------------------------------------

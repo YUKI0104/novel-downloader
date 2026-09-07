@@ -68,6 +68,7 @@ export namespace main {
 	    platform: string;
 	    bookId: string;
 	    title: string;
+	    formerTitle: string;
 	    author: string;
 	    description: string;
 	    chapterCount: number;
@@ -90,6 +91,7 @@ export namespace main {
 	        this.platform = source["platform"];
 	        this.bookId = source["bookId"];
 	        this.title = source["title"];
+	        this.formerTitle = source["formerTitle"];
 	        this.author = source["author"];
 	        this.description = source["description"];
 	        this.chapterCount = source["chapterCount"];
