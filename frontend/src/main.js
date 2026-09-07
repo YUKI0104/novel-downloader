@@ -469,10 +469,14 @@ async function doSearch() {
             } catch (e) {}
         }
     } catch (e) {
-        setStatus('搜索失败: ' + (e.message || e), true);
+        const emsg = String(e.message || e);
+        setStatus('搜索失败: ' + emsg, true);
         // 钥匙串被拦:弹引导授权界面,授权后自动重试
-        if (e && e.message && e.message.includes('KEYCHAIN_NEEDS_FIX')) {
+        if (emsg.includes('KEYCHAIN_NEEDS_FIX')) {
             showKeychainDialog(() => doSearch());
+        } else if (platform === 'fanqie' && /502|503|风控|滑块/.test(emsg)) {
+            // 番茄风控/502:弹窗提示,更醒目
+            showSearchFailDialog(emsg, () => doSearch());
         }
     } finally {
         btn.disabled = false;
@@ -1085,6 +1089,28 @@ $('btn-sd-ignore').addEventListener('click', async () => {
 // ---------------------------------------------------------------------------
 let kcRetry = null;   // 授权成功后的重试回调
 let kcShown = false;  // 防止并发请求重复弹窗
+
+// 搜索失败弹窗(番茄风控/502)
+let sfRetry = null;
+function showSearchFailDialog(msg, onRetry) {
+    $('sf-text').textContent = '番茄服务器暂时拒绝了请求(HTTP 502),通常是被网站风控限制。'
+        + (msg ? '\n\n详情: ' + msg : '');
+    sfRetry = onRetry || null;
+    $('sf-backdrop').classList.remove('hidden');
+}
+function closeSearchFailDialog() {
+    sfRetry = null;
+    $('sf-backdrop').classList.add('hidden');
+}
+$('btn-sf-close').addEventListener('click', closeSearchFailDialog);
+$('btn-sf-retry').addEventListener('click', () => {
+    const cb = sfRetry;
+    closeSearchFailDialog();
+    if (cb) cb();
+});
+$('sf-backdrop').addEventListener('click', (e) => {
+    if (e.target === $('sf-backdrop')) closeSearchFailDialog();
+});
 
 function showKeychainDialog(onRetry) {
     if (kcShown) return;

@@ -241,6 +241,22 @@ macOS 弹出的「security 想要访问钥匙串」就是在问这个权限。
     </div>
 </div>
 
+<!-- 搜索失败弹窗(风控/502) -->
+<div id="sf-backdrop" class="modal-backdrop hidden">
+    <div class="confirm" role="dialog" aria-modal="true">
+        <h3>😥 搜索失败</h3>
+        <p class="cf-text" id="sf-text">番茄服务器暂时拒绝了请求(HTTP 502),通常是被网站风控限制。</p>
+        <p class="kc-note" style="margin-bottom:16px">建议:
+· 等待 10~30 分钟后再试(风控一般会自动解除)
+· 换一个搜索关键词试试
+· 检查本机网络 / 代理是否正常</p>
+        <div class="cf-actions">
+            <button id="btn-sf-retry" class="btn primary">重试</button>
+            <button id="btn-sf-close" class="btn ghost">知道了</button>
+        </div>
+    </div>
+</div>
+
 <!-- 全局提示 -->
 <div id="toast" class="toast hidden"></div>
 
