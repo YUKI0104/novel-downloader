@@ -128,6 +128,8 @@ type App struct {
 
 	mu   sync.Mutex // 保护 settings
 	dlMu sync.Mutex // 同一时刻只允许一个下载任务
+
+	shutdownOnce sync.Once // 退出清理只执行一次(OnBeforeClose/OnShutdown 都会触发)
 }
 
 // NewApp 创建 App。
@@ -142,6 +144,15 @@ func (a *App) startup(ctx context.Context) {
 	appLog("应用启动")
 	a.settings = a.loadSettings()
 	a.initClients()
+	// 后台预热番茄内核:冷启动(含内核联网自更新检查)可能耗时 1 分钟,
+	// 启动时就异步拉起,避免用户第一次搜索/看榜时干等。
+	go func() {
+		if err := a.fanqie.EnsureServer(); err != nil {
+			appLog("番茄内核预热失败: %v", err)
+			return
+		}
+		appLog("番茄内核预热完成")
+	}()
 }
 
 // RevealLog 在 Finder 中显示日志文件并返回其路径,便于用户导出诊断。
@@ -186,20 +197,39 @@ func (a *App) exportKernelLog() {
 	}
 }
 
-// shutdown 退出时停止番茄服务。
+// shutdown 退出时停止番茄服务(幂等;OnBeforeClose/OnShutdown 都会调)。
 func (a *App) shutdown(ctx context.Context) {
-	a.fanqie.StopServer()
+	a.shutdownOnce.Do(func() {
+		if a.fanqie != nil {
+			_ = a.fanqie.StopServer()
+		}
+	})
 }
 
 // bundledFanqieBin 返回 .app 内置的番茄内核路径(Contents/Resources)。
+// 兼容历史包名(如 TomatoNovelDownloader-macOS_arm64),避免升级后找不到内核。
 func bundledFanqieBin() string {
 	exe, err := os.Executable()
 	if err != nil {
 		return ""
 	}
-	p := filepath.Join(filepath.Dir(exe), "..", "Resources", "Tomato-Novel-Downloader")
-	if _, err := os.Stat(p); err == nil {
-		return p
+	resources := filepath.Join(filepath.Dir(exe), "..", "Resources")
+	for _, name := range []string{"Tomato-Novel-Downloader", "Tomato-Novel-Downloader-universal"} {
+		p := filepath.Join(resources, name)
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+			return p
+		}
+	}
+	if entries, err := os.ReadDir(resources); err == nil {
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasPrefix(e.Name(), "Tomato") {
+				continue
+			}
+			p := filepath.Join(resources, e.Name())
+			if fi, err := os.Stat(p); err == nil && fi.Mode()&0111 != 0 {
+				return p
+			}
+		}
 	}
 	return ""
 }
@@ -221,7 +251,15 @@ func (a *App) initClients() {
 	a.qimao = qimao.NewClient()
 	// 内核 save_path 用应用私有目录:避免每次预览书都把封面/临时目录写进用户下载文件夹
 	kernelDir := filepath.Join(appSupportDir(), "downloads")
-	a.fanqie = fanqie.NewClient(resolveFanqieBin(a.settings.FanqieBin), "", kernelDir)
+	bin := resolveFanqieBin(a.settings.FanqieBin)
+	// 内核路径未变时复用现有 client:保存设置不会丢掉对已拉起内核的跟踪,
+	// 避免内核变成无人管的孤儿。
+	if a.fanqie != nil && a.fanqie.Tomato == bin {
+		a.fanqie.SaveDir = kernelDir
+		a.fanqie.Log = appLog
+		return
+	}
+	a.fanqie = fanqie.NewClient(bin, "", kernelDir)
 	a.fanqie.Log = appLog
 }
 

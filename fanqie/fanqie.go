@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,10 +34,19 @@ const (
 	baseURLFmt   = "http://127.0.0.1:%d"
 	pidFile      = "/tmp/tomato-server.pid"
 	pollInterval = time.Second
+
+	// kernelStartTimeout 内核冷启动上限。内核启动时会做一次联网自更新检查,
+	// 网络不佳时实测冷启动可达 60s+,旧值 60s 会在冷启动时误判超时并杀掉内核。
+	kernelStartTimeout = 150 * time.Second
+
+	// 搜索重试上限与退避。旧实现 5 次*递增 sleep(3+4+5+6+7=25s),
+	// 把一次确定性的 5xx 变成 25s 卡顿;这里改为短退避 + 有限次数。
+	searchAttempts   = 4
+	searchRetryDelay = 800 * time.Millisecond
 )
 
 var (
-	randMu sync.Mutex
+	randMu  sync.Mutex
 	randSrc = rand.NewSource(time.Now().UnixNano())
 )
 
@@ -46,6 +56,12 @@ type rankCacheEntry struct {
 	at    time.Time
 }
 
+// nameCacheEntry 网页书名校验缓存(避免每次打开详情都请求 fanqienovel.com)。
+type nameCacheEntry struct {
+	name string
+	at   time.Time
+}
+
 // Client 是番茄服务的 REST 客户端 + 服务器管理器。
 type Client struct {
 	Port    int
@@ -53,11 +69,14 @@ type Client struct {
 	DataDir string // 数据目录(config.yml/logs)
 	SaveDir string // 下载保存目录(写入 config.yml 的 save_path)
 
-	serverStarted bool
-	pid           int
+	srvMu sync.Mutex // 串行化 EnsureServer/StopServer,避免并发拉起多个内核
+	pid   int        // 本次进程已知的内核 PID(含接管来的)
 
 	rankMu    sync.Mutex
 	rankCache map[string]rankCacheEntry // URL → 榜单缓存
+
+	nameMu    sync.Mutex
+	nameCache map[string]nameCacheEntry // bookID → 网页当前书名
 
 	Log func(format string, args ...interface{}) // 可选诊断日志回调(由 App 注入)
 }
@@ -76,7 +95,7 @@ func NewClient(tomatoBin, dataDir, saveDir string) *Client {
 	if dataDir == "" {
 		dataDir = filepath.Join(os.Getenv("HOME"), "Library", "Caches", "tomato-novel-downloader")
 	}
-	return &Client{Port: DefaultPort, Tomato: tomatoBin, DataDir: dataDir, SaveDir: saveDir, rankCache: map[string]rankCacheEntry{}}
+	return &Client{Port: DefaultPort, Tomato: tomatoBin, DataDir: dataDir, SaveDir: saveDir, rankCache: map[string]rankCacheEntry{}, nameCache: map[string]nameCacheEntry{}}
 }
 
 func (c *Client) base() string { return fmt.Sprintf(baseURLFmt, c.Port) }
@@ -85,8 +104,11 @@ func (c *Client) base() string { return fmt.Sprintf(baseURLFmt, c.Port) }
 // 服务器管理
 // ---------------------------------------------------------------------------
 
-func (c *Client) isRunning() bool {
-	resp, err := (&http.Client{Timeout: 2 * time.Second}).Get(c.base() + "/api/status")
+func (c *Client) isRunning() bool { return c.probe(2 * time.Second) }
+
+// probe 以给定超时探测内核是否在监听并返回 200。
+func (c *Client) probe(d time.Duration) bool {
+	resp, err := (&http.Client{Timeout: d}).Get(c.base() + "/api/status")
 	if err != nil {
 		return false
 	}
@@ -94,16 +116,73 @@ func (c *Client) isRunning() bool {
 	return resp.StatusCode == http.StatusOK
 }
 
+// readPidFile 读取 /tmp/tomato-server.pid(无/非法返回 0)。
+func readPidFile() int {
+	b, err := os.ReadFile(pidFile)
+	if err != nil {
+		return 0
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	if err != nil || pid <= 0 {
+		return 0
+	}
+	return pid
+}
+
+func writePidFile(pid int) { _ = os.WriteFile(pidFile, []byte(strconv.Itoa(pid)), 0644) }
+func removePidFile()       { _ = os.Remove(pidFile) }
+
+// pidListeningOnPort 用 lsof 找出监听指定端口的进程 PID(找不到返回 0)。
+// 用于接管/回收不是本进程直接拉起的 stale 内核。
+func pidListeningOnPort(port int) int {
+	out, err := exec.Command("lsof", "-ti", fmt.Sprintf("tcp:%d", port), "-sTCP:LISTEN").Output()
+	if err != nil {
+		return 0
+	}
+	for _, f := range strings.Fields(string(out)) {
+		if pid, err := strconv.Atoi(f); err == nil && pid > 0 {
+			return pid
+		}
+	}
+	return 0
+}
+
+// looksLikeKernel 检查 pid 的命令行是否像番茄内核。
+// 第二个返回值表示检查是否成功(ps 不可用时为 false,调用方应保守处理)。
+func looksLikeKernel(pid int) (looksLike bool, checked bool) {
+	if pid <= 0 {
+		return false, true
+	}
+	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "command=").Output()
+	s := strings.TrimSpace(string(out))
+	if err != nil || s == "" {
+		return false, false // 无法确认
+	}
+	return strings.Contains(strings.ToLower(s), "tomato"), true
+}
+
 // Status 返回服务器是否在运行。
 func (c *Client) Status() bool { return c.isRunning() }
 
 // EnsureServer 确保服务器运行。未运行则写入配置并启动。
+// 已运行时会“接管”内核(记录 PID,必要时补写 PID 文件),保证退出时能回收。
 func (c *Client) EnsureServer() error {
+	c.srvMu.Lock()
+	defer c.srvMu.Unlock()
+
 	if c.isRunning() {
+		c.adoptRunningLocked()
 		return nil
 	}
+	// 端口没响应:清掉 stale PID 文件(进程已死,或 PID 已被别的进程复用)
+	if pid := readPidFile(); pid > 0 {
+		looks, checked := looksLikeKernel(pid)
+		if !processAlive(pid) || (checked && !looks) {
+			removePidFile()
+		}
+	}
 	if _, err := os.Stat(c.Tomato); err != nil {
-		return fmt.Errorf("未找到 %s，请先安装 Tomato-Novel-Downloader", c.Tomato)
+		return fmt.Errorf("未找到番茄内核 %s。请到「设置」里指定内核路径,或重新安装「番茄猫下载器」(内核应位于 App 包内的 Contents/Resources/)", c.Tomato)
 	}
 	if err := c.ensureConfig(); err != nil {
 		return fmt.Errorf("写入配置失败: %w", err)
@@ -112,51 +191,92 @@ func (c *Client) EnsureServer() error {
 		return err
 	}
 	cmd := exec.Command(c.Tomato, "--server", "--data-dir", c.DataDir)
+	configureProcessGroup(cmd) // 独立进程组,退出时可整组回收
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("启动番茄服务失败: %w", err)
 	}
-	c.serverStarted = true
 	c.pid = cmd.Process.Pid
-	_ = os.WriteFile(pidFile, []byte(fmt.Sprint(c.pid)), 0644)
+	writePidFile(c.pid)
+	c.logf("番茄内核已启动 PID %d,等待就绪(首次启动可能需要 1 分钟)...", c.pid)
 
-	deadline := time.Now().Add(60 * time.Second)
+	start := time.Now()
+	deadline := time.Now().Add(kernelStartTimeout)
 	for time.Now().Before(deadline) {
-		if c.isRunning() {
+		if c.probe(1 * time.Second) {
+			c.logf("番茄内核就绪(用时 %.1fs)", time.Since(start).Seconds())
 			return nil
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 	}
-	cmd.Process.Kill()
-	_ = os.Remove(pidFile)
+	killProcess(c.pid) // 整组回收
+	c.pid = 0
+	removePidFile()
 	return errors.New("服务器启动超时")
 }
 
-// StopServer 停止服务器(含 PID 文件中记录的旧进程)。
-func (c *Client) StopServer() error {
+// adoptRunningLocked 接管一个已在运行的内核,确保 StopServer 能回收它。
+// 调用方必须持有 c.srvMu。
+func (c *Client) adoptRunningLocked() {
 	if c.pid > 0 {
-		if p, err := os.FindProcess(c.pid); err == nil {
-			p.Kill()
-		}
-		c.pid = 0
+		return
 	}
-	if b, err := os.ReadFile(pidFile); err == nil {
-		var pid int
-		if n, _ := fmt.Sscanf(strings.TrimSpace(string(b)), "%d", &pid); n == 1 && pid > 0 {
-			if p, err := os.FindProcess(pid); err == nil {
-				p.Kill()
-			}
+	if pid := readPidFile(); pid > 0 && processAlive(pid) {
+		if ok, checked := looksLikeKernel(pid); !checked || ok {
+			c.pid = pid
+			c.logf("番茄内核已在运行,接管 PID %d", pid)
+			return
 		}
 	}
-	_ = os.Remove(pidFile)
-	// 等端口释放
-	deadline := time.Now().Add(10 * time.Second)
+	if pid := pidListeningOnPort(c.Port); pid > 0 {
+		if ok, checked := looksLikeKernel(pid); !checked || ok {
+			c.pid = pid
+			writePidFile(pid)
+			c.logf("检测到端口 %d 上的已有番茄内核(PID %d),接管", c.Port, pid)
+		}
+	}
+}
+
+// StopServer 停止服务器:杀掉已知 PID、PID 文件中的 PID、以及端口上的监听进程,
+// 并按进程组回收,避免内核 fork 出的子进程成为孤儿。普通退出路径 <1s 返回。
+func (c *Client) StopServer() error {
+	c.srvMu.Lock()
+	defer c.srvMu.Unlock()
+
+	pids := map[int]bool{}
+	if c.pid > 0 {
+		pids[c.pid] = true
+	}
+	if pid := readPidFile(); pid > 0 {
+		// 只回收确实像内核的 PID,避免误杀复用了旧 PID 的无关进程
+		if ok, checked := looksLikeKernel(pid); !checked || ok {
+			pids[pid] = true
+		}
+	}
+	// 端口上实际在监听的进程(stale 内核兜底):只回收名字像番茄内核的进程
+	if pid := pidListeningOnPort(c.Port); pid > 0 {
+		if ok, checked := looksLikeKernel(pid); !checked || ok {
+			pids[pid] = true
+		}
+	}
+	for pid := range pids {
+		killProcess(pid)
+	}
+	c.pid = 0
+	removePidFile()
+
+	// 短暂等待端口释放(SIGKILL 后应立刻释放)。上限 ~0.8s,避免退出卡 10s。
+	deadline := time.Now().Add(800 * time.Millisecond)
 	for time.Now().Before(deadline) {
-		if !c.isRunning() {
-			break
+		if !c.probe(300 * time.Millisecond) {
+			c.logf("番茄内核已退出")
+			return nil
 		}
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
+	}
+	if c.probe(300 * time.Millisecond) {
+		c.logf("警告: 番茄内核仍在监听端口 %d,未能完全退出", c.Port)
 	}
 	return nil
 }
@@ -314,118 +434,89 @@ type JobStatus struct {
 // 业务接口
 // ---------------------------------------------------------------------------
 
-// Search 搜索。番茄搜索接口会被风控/内核预热影响返回空,空结果自动重试一次。
+// Search 搜索。内核返回空结果时短退避重试(内核预热/临时风控),
+// 但不再用长 sleep 掩盖错误:确定性 5xx/错误会尽快带着真实原因返回。
 func (c *Client) Search(keyword string) ([]SearchResult, error) {
-	var results []SearchResult
-	var lastError error
+	var lastErr error
+	serverRestarted := false
 
-	// 最多尝试 5 次，包括风控情况
-	for attempt := 0; attempt < 5; attempt++ {
-		c.logf("搜索[%s] 开始第%d次尝试...", keyword, attempt+1)
-
-		// 检查内核是否运行
-		if !c.isRunning() {
-			c.logf("番茄内核未运行，尝试启动...")
-			if err := c.EnsureServer(); err != nil {
-				c.logf("启动番茄内核失败: %v", err)
-				c.logf("请检查 Tomato-Novel-Downloader 是否正确安装")
-				c.logf("当前内核路径: %s", c.Tomato)
-				return nil, fmt.Errorf("启动番茄内核失败: %v。请检查 Tomato-Novel-Downloader 是否正确安装", err)
-			}
-			c.logf("番茄内核启动成功，等待 2 秒后重试...")
-			time.Sleep(2 * time.Second)
-			attempt-- // 减少重试次数
-			continue
+	for attempt := 1; attempt <= searchAttempts; attempt++ {
+		// 确保内核在跑(未跑则拉起;已跑则接管)
+		if err := c.EnsureServer(); err != nil {
+			c.logf("搜索[%s] 启动番茄内核失败: %v", keyword, err)
+			return nil, fmt.Errorf("启动番茄内核失败: %w", err)
 		}
+		c.logf("搜索[%s] 第%d/%d次尝试...", keyword, attempt, searchAttempts)
 
 		data, err := c.apiGet("/api/search", map[string]string{"q": keyword})
 		if err != nil {
-			c.logf("搜索[%s] 第%d次 失败: %v", keyword, attempt+1, err)
-
-			// 如果是连接错误，尝试重启内核
-			if strings.Contains(err.Error(), "connection refused") ||
-			   strings.Contains(err.Error(), "timeout") ||
-			   strings.Contains(err.Error(), "EOF while parsing") {
-				c.logf("检测到内核连接问题，尝试重启...")
+			lastErr = err
+			c.logf("搜索[%s] 第%d次 请求失败: %v", keyword, attempt, err)
+			// 内核连接异常:重启一次,之后交给退避重试
+			if isTransportError(err) && !serverRestarted {
+				serverRestarted = true
+				c.logf("检测到内核连接异常,重启内核后重试...")
 				_ = c.StopServer()
-				time.Sleep(2 * time.Second)
-				attempt-- // 减少重试次数
 				continue
 			}
-
-			// 检查是否是 5xx 错误（风控导致）
-			if strings.Contains(err.Error(), "HTTP 5") {
-				c.logf("检测到风控错误，等待 %d 秒后重试...", 2+attempt)
-				lastError = err
-				// 需要更长的等待时间
-				time.Sleep(time.Duration(3+attempt) * time.Second)
-				continue
+			if attempt < searchAttempts {
+				time.Sleep(searchRetryDelay)
 			}
-			return nil, err
-		}
-
-		// 调试：打印原始响应
-		if raw, err := json.Marshal(data); err == nil {
-			c.logf("搜索[%s] 第%d次 原始响应: %s", keyword, attempt+1, truncBytes(raw, 500))
-		}
-
-		// 检查返回的数据是否为空（可能是风控导致的空响应）
-		if len(data) == 0 {
-			c.logf("搜索[%s] 第%d次 返回空数据，可能是风控", keyword, attempt+1)
-			lastError = errors.New("空响应（可能是风控）")
-			time.Sleep(time.Duration(2+attempt) * time.Second)
 			continue
 		}
 
-		// 检查是否有错误信息
-		if errMsg, ok := data["error"].(string); ok {
-			c.logf("搜索[%s] 第%d次 返回错误信息: %s", keyword, attempt+1, errMsg)
-
-			// 如果是 EOF 错误，可能是网络问题
-			if strings.Contains(errMsg, "EOF while parsing") || strings.Contains(errMsg, "网络错误") {
-				lastError = fmt.Errorf("网络解析错误: %s", errMsg)
-				time.Sleep(time.Duration(3+attempt) * time.Second)
-				continue
-			}
-
-			// 如果是风控相关错误，提示用户
-			if strings.Contains(errMsg, "风控") || strings.Contains(errMsg, "滑块验证") {
-				lastError = fmt.Errorf("搜索被风控限制: %s", errMsg)
-				c.logf("检测到风控限制，请稍后再试或更换搜索关键词")
-				time.Sleep(time.Duration(3+attempt) * time.Second)
-				continue
-			}
+		// 调试:打印原始响应
+		if raw, err := json.Marshal(data); err == nil {
+			c.logf("搜索[%s] 第%d次 原始响应: %s", keyword, attempt, truncBytes(raw, 500))
 		}
 
-		results = parseSearchResults(data)
-		c.logf("搜索[%s] 第%d次 结果 %d 条", keyword, attempt+1, len(results))
+		if errMsg, ok := data["error"].(string); ok && errMsg != "" {
+			lastErr = errors.New(errMsg)
+			c.logf("搜索[%s] 第%d次 内核返回错误: %s", keyword, attempt, errMsg)
+			if attempt < searchAttempts {
+				time.Sleep(searchRetryDelay)
+			}
+			continue
+		}
 
-		// 如果有结果，直接返回
+		results := parseSearchResults(data)
 		if len(results) > 0 {
+			c.logf("搜索[%s] 第%d次 结果 %d 条", keyword, attempt, len(results))
 			return results, nil
 		}
 
-		// 如果是空结果，记录并等待
+		// 空结果:内核预热中或临时风控,短暂等待后重试
 		if raw, err := json.Marshal(data); err == nil {
-			c.logf("搜索[%s] 空结果,内核返回: %s", keyword, truncBytes(raw, 400))
+			c.logf("搜索[%s] 第%d次 空结果,内核返回: %s", keyword, attempt, truncBytes(raw, 400))
 		}
-
-		// 最后一次尝试不需要等待
-		if attempt < 4 {
-			time.Sleep(1200 * time.Millisecond) // 首次空:稍等重试(预热/临时风控)
+		lastErr = errors.New("内核返回空结果")
+		if attempt < searchAttempts {
+			time.Sleep(searchRetryDelay)
 		}
 	}
 
-	// 所有尝试都失败，提供友好的错误信息
-	if lastError != nil {
-		errorMsg := lastError.Error()
-		if strings.Contains(errorMsg, "风控") || strings.Contains(errorMsg, "HTTP 5") {
-			return nil, fmt.Errorf("搜索失败，可能被番茄网站风控限制。请稍后再试或更换搜索关键词。")
+	if lastErr != nil {
+		msg := lastErr.Error()
+		// 风控类错误保留对用户友好的提示,同时带上真实原因便于排查
+		if strings.Contains(msg, "HTTP 5") || strings.Contains(msg, "风控") || strings.Contains(msg, "滑块") {
+			return nil, fmt.Errorf("搜索失败: %s(可能被番茄网站风控限制,请稍后再试或更换搜索关键词)", msg)
 		}
-		return nil, fmt.Errorf("搜索失败，可能被番茄网站风控滑块验证限制: %v", lastError)
+		return nil, fmt.Errorf("搜索失败: %s", msg)
 	}
+	return nil, errors.New("搜索失败: 未找到相关结果")
+}
 
-	return nil, fmt.Errorf("搜索失败，未找到相关结果")
+// isTransportError 判断错误是否属于内核连接层面的问题(可尝试重启内核)。
+func isTransportError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "connection refused") ||
+		strings.Contains(s, "connect: connection refused") ||
+		strings.Contains(s, "timeout") ||
+		strings.Contains(s, "EOF") ||
+		strings.Contains(s, "reset by peer")
 }
 
 // userAgentPool 随机 User-Agent 池
@@ -520,12 +611,24 @@ var webNameRe = regexp.MustCompile(`<meta name="keywords" content="([^",]+)`)
 // 番茄作者改名后,内核官方 API 仍返回旧名,只有网页是最新的。
 // 抓不到(反爬/网络)时返回空字符串,调用方据此回退到旧名。
 func (c *Client) WebBookName(bookID string) string {
+	const nameCacheTTL = 10 * time.Minute
+	c.nameMu.Lock()
+	if e, ok := c.nameCache[bookID]; ok && time.Since(e.at) < nameCacheTTL {
+		c.nameMu.Unlock()
+		return e.name
+	}
+	c.nameMu.Unlock()
+
 	htmlStr, err := fetchHTML(rankBaseURL + "/page/" + bookID)
 	if err != nil {
 		return ""
 	}
 	if m := webNameRe.FindStringSubmatch(htmlStr); m != nil {
-		return html.UnescapeString(strings.TrimSpace(m[1]))
+		name := html.UnescapeString(strings.TrimSpace(m[1]))
+		c.nameMu.Lock()
+		c.nameCache[bookID] = nameCacheEntry{name: name, at: time.Now()}
+		c.nameMu.Unlock()
+		return name
 	}
 	return ""
 }
@@ -787,7 +890,7 @@ func (c *Client) RankingBooks(rankURL string) ([]Book, error) {
 // CreateJob 创建下载任务。start/end 为 0 表示全部。
 func (c *Client) CreateJob(bookID string, start, end int) (string, error) {
 	body := map[string]interface{}{"book_id": bookID}
-	if start > 1 {
+	if start > 0 {
 		body["range_start"] = start
 	}
 	if end > 0 {
