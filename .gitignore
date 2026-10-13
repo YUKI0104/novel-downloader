@@ -1,16 +1,11 @@
-# Wails 构建产物(保留源文件:图标 + darwin plist 模板)
-build/*
-!build/appicon.png
-!build/darwin/
-!build/darwin/Info.plist
-!build/darwin/Info.dev.plist
-
-# 依赖
-node_modules/
-
-# 前端产物
-frontend/dist/
-
-# macOS
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
 .DS_Store
-build/darwin/icon.icns
+
+# 自签名代码签名材料（本地生成，严禁提交）
+Tools/fqmdev.keychain-db
+Tools/fqmdev.keychain-db-*
+Tools/*.pem
+Tools/*.p12

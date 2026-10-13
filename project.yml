@@ -1,0 +1,76 @@
+# XcodeGen 工程定义（唯一事实来源）。
+# 生成命令：xcodegen generate   （产物 FanQieMao.xcodeproj 已随仓库提交，
+# 因此 `xcodebuild -scheme FanQieMao -configuration Release build` 不依赖 xcodegen。）
+name: FanQieMao
+
+options:
+  bundleIdPrefix: com.yuki
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ALWAYS_SEARCH_USER_PATHS: NO
+    ENABLE_HARDENED_RUNTIME: NO
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_REQUIRED: YES
+    CODE_SIGNING_ALLOWED: YES
+    DEVELOPMENT_TEAM: ""
+  configs:
+    # Debug：只编本机当前架构（arm64），迭代快；不产出 x86_64 切片。
+    Debug:
+      ONLY_ACTIVE_ARCH: YES
+    # Release：显式出通用二进制（arm64 + x86_64），给 Intel Mac 试用。
+    # ONLY_ACTIVE_ARCH 必须为 NO，否则只会保留本机 active arch 一片。
+    Release:
+      ARCHS: "arm64 x86_64"
+      ONLY_ACTIVE_ARCH: NO
+
+targets:
+  FanQieMao:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Sources
+      # 出厂内核用「文件夹引用」原样拷进 Contents/Resources/Kernel/，
+      # 不经过任何编译/裁剪，SHA256 必须与官方发布包一致（规格 5.1 / 6.1）。
+      - path: Resources/Kernel
+        type: folder
+    settings:
+      base:
+        PRODUCT_NAME: FanQieMao
+        PRODUCT_BUNDLE_IDENTIFIER: com.yuki.fanqiemao
+        MARKETING_VERSION: "2.5.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ENABLE_APP_SANDBOX: NO
+        INFOPLIST_FILE: Supporting/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+        COMBINE_HIDPI_IMAGES: YES
+    info:
+      path: Supporting/Info.plist
+      properties:
+        CFBundleDisplayName: 番茄猫
+        CFBundleName: 番茄猫
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundlePackageType: APPL
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSApplicationCategoryType: public.app-category.books
+        LSMultipleInstancesProhibited: false
+        NSPrincipalClass: NSApplication
+        NSHighResolutionCapable: true
+        NSHumanReadableCopyright: ""
+        # 内核只监听 127.0.0.1，放行本地明文 HTTP（否则 ATS 可能拦掉 /api/*）。
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true

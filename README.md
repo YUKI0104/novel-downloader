@@ -1,153 +1,140 @@
-# 📚 番茄猫下载器 · 番茄/七猫小说下载 + 短剧IP助手
+# 番茄猫 · 番茄小说 / 七猫小说 桌面下载器（macOS 原生版）
 
-> **免费小说下载器** 与 **短剧创作/编剧辅助工具** 二合一(番茄猫下载器) —— macOS 原生应用。
-> 既能把**番茄小说、七猫小说**一键下载成 **TXT / EPUB** 到本地,又能检索**番茄短剧后台的 IP 改编信息**,帮你判断哪些小说被改编成了**竖屏短剧/微短剧**、申请热度如何。
-
-[![macOS](https://img.shields.io/badge/platform-macOS%20arm64-lightgrey)](https://github.com/YUKI0104/novel-downloader)
-[![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/YUKI0104/novel-downloader)
-[![Wails v2](https://img.shields.io/badge/Wails-v2-blueviolet)](https://wails.io)
-
-基于 [Wails v2](https://wails.io)(Go + 原生 WebKit),内核纯 Go,零 Python 依赖;
-番茄平台内置 [Tomato-Novel-Downloader](https://github.com/zhongbai2333/Tomato-Novel-Downloader)(Rust) 服务。
-界面采用 Apple / macOS 原生设计语言,毛玻璃材质、明暗双模式自动适配。
-
----
-
-## ✨ 功能一览
-
-> 面向**小说读者 / 下载党**与**短剧创作者 / 编剧**:离线存书、多平台排行榜选书、判断小说是否已被改编成短剧 / 申请热度,一站式搞定。
-
-### 🖼 界面一览
-- **搜索页(唯一主页面)**:顶部「📂 下载」「⚙️ 设置」按钮;下方默认显示排行榜,搜索后切换为结果
-- **书籍详情弹窗**:封面、简介、统计(评分/字数/热度/榜单/主角)、**小说 ID(一键复制)+ 书籍链接(一键复制)**、下载按钮、短剧IP数据条(可选)
-- **下载管理弹窗**:已下载文件列表 + 刷新 / 打开目录 / 删除
-- **设置悬浮菜单**:下载目录、保存格式、短剧模式开关
-
-### 小说下载
-- 🔍 **双平台搜索**:番茄小说、七猫小说,搜索即得封面、评分、字数、人气
-- 🏆 **排行榜选书**:番茄(综合/男频/女频 + 阅读榜·新书榜 + 分类题材)、七猫(男生/女生 × 大热/新书/完结/收藏/更新),缓存 60s 秒开
-- 📖 **书籍详情**:作者、简介、章数、评分、字数、热度、榜单、分类、主角、**小说 ID(可复制)+ 书籍链接(可复制)**
-- ⬇️ **一键下载**:**TXT / EPUB** 两种格式,实时进度(章数百分比),默认存到下载文件夹,**文件名带小说 ID**(如 `书名 作者 [ID].txt`)
-- 📂 **下载管理**:顶部「📂 下载」按钮查看已下载文件,支持 Finder 定位、删除(仅移除记录或连文件一起删)
-- 📱 **本地阅读**:下载的 TXT/EPUB 可导入任意阅读器 / Kindle / 本地书架,离线阅读
-
-**📥 下载使用流程:**
-
-```
-1. 打开 App —— 搜索页默认显示热门排行榜
-2. 选平台(番茄小说 / 七猫小说)→ 输入书名 → 搜索
-3. 点开书籍详情 → 点「下载」→ 实时查看进度
-4. 完成自动存入下载文件夹;顶部「📂 下载」管理已下载文件
-```
-
-### 短剧 IP 检索
-- 🎬 **找改编 IP**:想找**适合改编成短剧的小说**、判断某本小说是否已被**改编成短剧 / 微短剧**、**多少人申请过这个 IP**、**同 IP 改编中项目**有多少,直接查番茄短剧创作者中心后台
-- 🎬 **改编书单**:七猫频道下查看官方「剧本改编书单」,含**改编方向(动漫短剧/真人短剧)/ 频道 / 分类 / 字数 / 完结 / 热门书单**六组筛选 + 分页
-- 🔎 **短剧后台搜索**:打开**番茄书籍详情时自动查询**后台 IP,在简介与下载按钮之间显示「📅上架 / 👥申请 / 🎬改编中」
-
-> 🔐 **登录态说明**:短剧后台数据需要登录权限,本软件会**自动检测本机已登录的浏览器会话**。
-> 支持 **Chrome、Edge、Brave、Vivaldi、Opera**(均为 Chromium 内核,任一登录即可)。
-> **不支持 Safari**。若以上浏览器均未登录 `www.shortdramas.com`,打开番茄详情时会显示**橙色提示条**引导登录。
+> ## ⬇️ 下载最新版
 >
-> 🔑 **首次使用若弹出「security 想要访问钥匙串」**:
-> 这是 macOS 在询问是否允许读取浏览器的钥匙串密钥(用于解密登录态)。请在弹出的对话框中点**「总是允许」**,一次即可,之后不再弹出。
-> 若弹窗反复出现或卡住:打开「终端」运行一次 `security set-key-partition-list -S apple-tool:,apple: -s -k <你的开机密码> login`(把 `<你的开机密码>` 换成 macOS 登录密码),把 `security` 命令加入授权列表后即一劳永逸。
+> ### [**点这里下载 → GitHub Releases**](https://github.com/YUKI0104/novel-downloader/releases/latest)
+>
+> 直连安装包（.dmg，打开后把「番茄猫」拖进「应用程序」）：
+> **https://github.com/YUKI0104/novel-downloader/releases/latest/download/FanQieMao-2.5.0-universal-macOS14.dmg**
 
-### 体验
-- 🧭 **极简界面**:仅一个搜索页;「📂 下载」「⚙️ 设置」为顶部按钮,点击弹出管理弹窗/悬浮菜单
-- ⚙️ **设置悬浮菜单**:下载目录(点击选文件夹)、保存格式(TXT/EPUB)、**短剧模式开关**、**导出诊断日志**(遇到问题一键导出,便于排查)
-- 📐 固定窗口(1100×780),明暗双模式跟随系统
-
----
-
-## 🚀 快速上手
-
-1. **下载**:从 [Releases](https://github.com/YUKI0104/novel-downloader/releases) 获取 `FanQieMao-Downloader-v1.3.2.dmg`(macOS 通用:Apple 芯片与 Intel 均可)。
-2. **安装**:打开 DMG,先双击 **「修复无法打开.app」** 输入 Mac 密码(它会自动把 App 装入「应用程序」并移除隔离标记,兼容旧/新 macOS),再打开「应用程序」里的「番茄猫下载器」。若个别系统仍提示,右键点 App →「打开」即可。
-3. **下载小说**:在搜索页搜书名 → 点开详情 → 下载。默认存到 `~/Downloads`;顶部「📂 下载」按钮管理已下载文件。
-4. **短剧 IP**(可选):首次进入会询问是否启用。启用后需先在 **Chrome / Edge / Brave / Vivaldi / Opera** 任一浏览器登录 `www.shortdramas.com`(番茄短剧创作者中心),本软件会自动检测并读取该登录态。
-
-> - 短剧 IP 功能可在「⚙️ 设置」悬浮菜单里随时开关;**关闭后**,番茄详情的短剧数据、七猫的改编书单都会隐藏。
-> - 短剧后台搜索依赖浏览器的登录会话;以上浏览器都没登录时,打开番茄详情会显示提示条引导登录。Safari 暂不支持。
+一个 macOS 原生（Swift 6 + SwiftUI）的**番茄小说 / 七猫小说**下载与看榜工具：搜书 / 看榜 → 进详情 → 一键整本导出 **TXT**。
+另外带一个**短剧 IP 命中**功能：在番茄的搜索与榜单里直接标出「这本书在短剧后台的申请/上架情况」，详情页直接显示短剧后台数据（默认关闭）。
 
 ---
 
-## 🏗 项目结构
+## 界面预览
 
-```
-novel-downloader-wails/
-├── main.go            # Wails 入口(固定窗口 1100×780)
-├── app.go             # 绑定层:搜索 / 详情 / 榜单 / 下载 / 设置 / 环境
-├── shortdrama.go      # 短剧后台搜索(读 Edge 登录态 + 调 shortdramas IP 接口)
-├── app_test.go        # headless 端到端测试(go test,会真连各平台 API)
-├── qimao/             # 七猫下载器(签名 API + AES 解密 + 官网榜单接口)
-├── fanqie/            # 番茄下载器(管理 Rust 内核服务 + 官网榜单解析)
-├── frontend/          # Vite + 原生 JS 前端(Apple 风格)
-│   ├── index.html
-│   └── src/main.js, style.css
-├── scripts/build.sh   # 构建脚本(打包番茄内核)
-└── build/             # 构建产物(build/bin/番茄猫下载器.app)
-```
+**① 榜单页** —— `综合热榜 / 男频 / 女频` 三个榜单，右上角一键刷新；卡片右下角是名次，顶栏搜索框支持书名 / 纯数字 ID / 网页链接三种入口。
 
-## 🔨 构建
+<img src="docs/images/screenshot-rank.jpg" width="900" alt="番茄猫 · 榜单页">
 
-前置:Go 1.25+、[Wails CLI](https://wails.io/docs/gettingstarted/installation)、Node.js。
-番茄内核置于 `~/bin/Tomato-Novel-Downloader`(或设置 `TOMATO_BIN` 环境变量)。
+**② 详情页** —— 封面、评分、字数、在读人数、章节数、简介、标签一屏看完。右下角「下载」按钮本身就是状态机：下载中在按钮内从左到右填充进度，下载完成后变成「访达」按钮（点一下直接在访达里定位到文件），文件删掉后自动变回「下载」。
+图里「下载」按钮右侧那两行（读者占比 / 申请·已上架·改编中）来自**短剧后台**，只有开启短剧功能才会显示；没开就是一本干净的番茄书。
+
+<img src="docs/images/screenshot-detail.jpg" width="900" alt="番茄猫 · 详情页">
+
+---
+
+## 系统要求 —— 请先看这张表（**尤其 Intel 机器**）
+
+| 项目 | 要求 |
+|---|---|
+| 芯片 | **Apple Silicon（M1/M2/M3/M4…）与 Intel（x86_64）都支持** —— 安装包是 **Universal 2 通用二进制**，同一份包两代机器都能装 |
+| 最低系统 | **macOS 14.0（Sonoma）或更新** |
+| **Intel 机器** | **必须 macOS 14 或更新**。**macOS 13（Ventura）、12（Monterey）、11（Big Sur）及更早的 Intel 机器打不开这个包**（会弹出「需要 macOS 14」）。工程按 14/15/26 分支写，macOS 14 是硬下限，老系统不在支持范围 |
+| 磁盘 | 约 100 MB（包含 arm64 与 amd64 两套内核） |
+
+> 一句话：**只要你的 Mac 能升到 macOS 14（Sonoma）**，Intel 或 M 系列都能装能用。
+
+查看自己系统版本：左上角  →「关于本机」。
+
+## 功能
+
+- **搜书**：番茄小说 / 七猫小说，支持书名、纯数字 ID、`fanqienovel.com/page/<id>` 链接三种入口
+- **榜单**：番茄榜单（综合热榜 / 男频 / 女频），带一键刷新
+- **详情**：封面 / 作者 / 评分 / 字数 / 在读人数 / 章节数 / 简介 / 标签，ID 与链接一键复制
+- **下载**：整本导出 **TXT**（番茄走官方 Rust 内核，七猫原生抓取）。下载按钮本身就是状态机：下载中在按钮内从左到右填充进度 → 完成后按钮变成**访达按钮**（点一下在访达里定位到下载好的文件）；文件删掉后自动回到「下载」
+- **短剧 IP 命中**（默认关闭，设置里开启）：按**小说 ID** 精确匹配短剧后台，命中的书在卡片上打角标（`上架N部·申请N次`），详情页显示后台的「已完结/上架月份 · 读者占比 · 申请/已上架/改编中 · 标签」
+- **最近查看**：搜索过的关键词与看过的书留档，一键清空
+
+## 安装（首次打开会被拦一次，正常）
+
+安装包是**本机自签名**（未经 Apple 公证），第一次打开会被 Gatekeeper 拦下：
+
+1. 打开 .dmg，把「番茄猫」拖进「应用程序」；
+2. 到「应用程序」里 **右键点「番茄猫」→ 打开 → 再点「打开」**（只需做一次）；
+3. 如果还是被拦，终端执行一次：`xattr -dr com.apple.quarantine /Applications/番茄猫.app`
+
+**短剧 IP 功能**（可选）需要读 Safari 的登录态，要额外授予**完全磁盘访问权限**；设置页里有图文教程引导。功能默认关闭，不用就不用开。
+
+## 数据与隐私
+
+- 小说文件、封面、设置全部**留在本机**（下载目录默认 `~/Downloads`），不上传任何数据；
+- 短剧功能只在你**自己已登录 Safari** 的前提下，用你的会话去取你本来就能在网页上看到的数据；密钥只从系统钥匙串读取，不落盘、不外发。
+
+## 声明
+
+仅供**个人学习与本地备份**使用。请支持正版，勿用于任何商业用途或二次分发。
+
+---
+
+# 开发
+
+## 构建与运行
 
 ```bash
-cd novel-downloader-wails
-./scripts/build.sh
+bash Tools/跑.sh              # 构建 + 启动（Debug）
+bash Tools/打包.sh            # Release 构建 + 自签名 + 装到 /Applications（原地覆盖）
+bash Tools/发行.sh            # 打 DMG + ZIP（发 Release 用）
+bash Tools/selftest.sh chain  # 端到端自检：搜索 → ID/链接直达 → 详情 → 下载
 ```
 
-产物:`build/bin/番茄猫下载器.app`(约 17 MB,自包含番茄内核)。
+工程：`FanQieMao.xcodeproj`（由 `project.yml` 经 XcodeGen 生成，**已随仓库提交**，构建不需要 xcodegen）。
+bundle id `com.yuki.fanqiemao`，显示名「番茄猫」，版本 `2.5.0`，最低系统 **macOS 14.0**。
 
-## 🧪 开发 / 测试
+**出通用二进制（Intel + Apple Silicon）必须给 destination**：
 
 ```bash
-wails dev      # 热重载开发模式
-go test -run TestE2E -v   # 无 GUI 的逻辑链路测试(会真连七猫/番茄 API)
+xcodebuild -scheme FanQieMao -configuration Release -destination generic/platform=macOS build
 ```
 
-## 📦 分发给他人
+只设 `ARCHS="arm64 x86_64"` 而**不给** `-destination`，xcodebuild 会自作主张挑「我的 Mac」(arm64)，产物只有 arm64 —— 这是踩过的坑，两个脚本里都已固定。
 
-1. 打包 `番茄猫下载器.app`(macOS arm64)。
-2. 因仅自签名,首次打开需右键 →「打开」,或执行 `xattr -cr 番茄猫下载器.app`。
-3. 若要完全规避提示,需要 Apple 开发者账号做签名 + 公证(notarytool)。
+## 架构
 
-> App 与番茄内核均为 **通用二进制**(arm64 + x86_64),Intel 和 Apple Silicon 都能直接运行。
+```
+Sources/
+  FanQieMaoApp.swift          App 入口（@NSApplicationDelegateAdaptor(AppLifecycle.self)）
+  AppModel.swift              ViewModel：搜索/详情/下载/库/设置编排
+  LiquidGlassCompat.swift     Liquid Glass 兼容层（唯一出现 #available 的地方）
+  Core/Kernel/                内核放置/启动/健康探测/自动更新/退出清理（posix_spawn 独立进程组）
+  Core/Fanqie/                番茄搜索/详情/下载流水线
+  Core/Qimao/                 七猫搜索/详情/下载
+  Core/Shortdrama/            短剧后台（Safari 登录态读取 → 按小说 ID 命中）
+  Core/Store/                 SettingsStore / LibraryStore（唯一写盘入口）
+  Features/                   Root / Search / Detail / Downloads / History / Shortdrama / Settings
+Resources/Kernel/             出厂内核（官方原样文件，arm64 + amd64 各一份）
+Tools/                        构建/打包/发行/自检脚本
+docs/                         规格与任务书（docs/spec-v0.1.md、docs/tasks/M*.md）
+```
 
-## 🗄 数据目录
+- 番茄数据来自官方 Rust 内核 `Tomato-Novel-Downloader v2.4.15`（本地 `127.0.0.1:18423` REST 服务）；
+  App 只负责内核的**放置 / 启动 / 健康探测 / 自动更新 / 退出清理**，内核文件原样随包分发（未 lipo、未改字节）
+- 内核自动更新：`releases/latest` → 版本比较 → 按架构选 asset → 下载校验 → 原子切换 → 健康检查失败自动回滚；
+  直连失败依次走 `ghfast.top` / `gh-proxy.com` / `ghproxy.net` 镜像
 
-- 设置:`~/Library/Application Support/novel-downloader/settings.json`
-- 下载记录:`~/Library/Application Support/novel-downloader/downloads.json`
-- 番茄服务配置:`~/Library/Caches/tomato-novel-downloader/config.yml`
-- 默认下载目录:`~/Downloads`(直接下载到「下载」文件夹)
+## 代码签名（自签名证书，TCC 授权不掉）
 
-## ⚠️ Windows 移植说明(供有需要的开发者)
+默认 `xcodebuild` 是 ad-hoc 签名，designated requirement 绑到 **cdhash**，重编一次就变 →
+「完全磁盘访问权限」等 TCC 授权随之失效。仓库改用**本机自签名证书**：
 
-本项目**只支持 macOS**(arm64 + x86_64 通用二进制),暂不原生支持 Windows。
-Wails v2 本身支持 Windows(基于 WebView2/Edge Chromium),番茄内核也有官方 Win64 版本,因此**理论上可移植**,但有以下几处 macOS 专属逻辑需要改造:
+```bash
+bash Tools/dev-sign-setup.sh   # 一次性：在 Tools/ 下的独立钥匙串建证书（CN=FanQieMao Dev）
+codesign -d -r- /Applications/番茄猫.app   # 验证：应为 identifier "com.yuki.fanqiemao" and certificate leaf = H"…"
+```
 
-| 位置 | 文件 | macOS 现状 | Windows 需要 |
-|---|---|---|---|
-| 用户主目录 | `app.go` / `shortdrama.go` / `fanqie.go` | `os.Getenv("HOME")` | `os.UserHomeDir()`(Windows 为 `%USERPROFILE%`) |
-| 打开文件夹 | `app.go` | `exec.Command("open", path)` | `explorer`(如 `explorer /select, <path>`) |
-| 数据/缓存目录 | `app.go` / `fanqie.go` | `~/Library/Application Support/...` | `%APPDATA%` / `%LOCALAPPDATA%` |
-| 番茄内核路径 | `app.go` / `fanqie.go` | `~/bin/Tomato-Novel-Downloader` | `TomatoNovelDownloader-Win64-v2.4.13.exe`(官方有 Win64 版) |
-| PID 文件 | `fanqie.go` | `/tmp/tomato-server.pid` | `os.TempDir()` |
-| **Edge cookie 解密** | `shortdrama.go` | keychain(`security`)+ PBKDF2 + AES | **DPAPI**(`CryptUnprotectData`)+ 读取 `Local State` 的 `os_crypt.encrypted_key` 解密出密钥,再 AES-128-CBC 解 cookie |
+自签名材料（`Tools/fqmdev.keychain-db` / `*.pem` / `*.p12`）已 gitignore，**不提交**，不进系统信任（TCC 匹配 requirement 即可）。
 
-**移植建议**:
-- 用 Go **build tag**(`//go:build windows` / `//go:build !windows`)写平台专属文件,不破坏 macOS 版。
-- 下载核心(搜索 / 榜单 / 改编书单 / 下载)基本是纯移植,主要改路径与 `open` 命令。
-- **短剧后台检索**依赖 Edge 会话解密,Windows 端需要 DPAPI 实现(注意 Windows 下 cookie 加密结构:Local State 里的密钥先 DPAPI 解密,再解 v10 cookie,库版本 ≥ 24 同样要去 32 字节前缀)。
-- Windows 构建:`wails build -platform windows/amd64`(需 Windows 环境或交叉编译工具链)。
+## 自检钩子（只在设环境变量时启用）
 
-欢迎有能力、有 Windows 环境的开发者 Fork 后自行移植修改与测试。
+| 环境变量 | 作用 |
+|---|---|
+| `FQM_SELFTEST=close\|quit\|chain\|update\|m11\|m12` | 点红叉 / Cmd+Q / 端到端链路 / 更新检查 / 界面取证 |
+| `FQM_SELFTEST_DELAY` | 延迟秒数（默认 8） |
+| `FQM_SELFTEST_KEYWORD` / `FQM_SELFTEST_DOWNLOAD_KEYWORD` | chain 模式的搜索词 / 下载目标 |
+| `FQM_DOWNLOAD_LIMIT=3` | 只下前 N 章（验收用） |
+| `FQM_MOCK_RELEASE_TAG` + `FQM_MOCK_ASSET_PATH` / `FQM_MOCK_ASSET_URL` | 伪造远端版本跑更新链 |
 
-## 🙏 致谢
+## 许可
 
-本项目在开发过程中参考 / 复用了以下开源项目,在此致以诚挚感谢:
-
-- [**shing-yu/swiftcat-downloader-flutter**](https://github.com/shing-yu/swiftcat-downloader-flutter.git) —— 七猫小说下载器(swiftcat),本项目的七猫 API 签名、AES 解密及下载逻辑移植自其思路。
-- [**zhongbai2333/Tomato-Novel-Downloader**](https://github.com/zhongbai2333/Tomato-Novel-Downloader.git) —— 番茄小说下载内核(Rust),本项目番茄平台的搜索 / 下载 / 详情由该内核的本地 REST 服务驱动。
+未声明开源许可（保留所有权利）。如需合作或授权请联系作者。
