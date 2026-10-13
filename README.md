@@ -1,5 +1,9 @@
 # 番茄猫 · 番茄小说 / 七猫小说 桌面下载器（macOS 原生版）
 
+> **💡 重大版本说明**：
+> 本版本放弃了过去的 **Wails（Go + Web 前端）** 技术栈（旧 Wails 版本最终定格在 **v1.3.6**），采用 **Xcode + 原生 SwiftUI（Swift 6）完全重写**。
+> 新版带来了原生的丝滑交互、更低的内存占用、磨砂玻璃视觉体验，并输出 Universal 2 通用二进制架构（原生支持 Apple Silicon 与 Intel 芯片）。版本号延续并跳跃至 **v2.5.0**。
+
 > ## ⬇️ 下载最新版
 >
 > ### [**点这里下载 → GitHub Releases**](https://github.com/YUKI0104/novel-downloader/releases/latest)
